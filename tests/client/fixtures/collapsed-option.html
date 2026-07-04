@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><title>Collapsed option</title>
+  <style>
+    body { font-family: system-ui, sans-serif; }
+    .opts .detail { display: none; }
+    #s-a:checked ~ .detail[data-for="a"],
+    #s-b:checked ~ .detail[data-for="b"],
+    #s-c:checked ~ .detail[data-for="c"] { display: block; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Pick a strategy</h1>
+    <div class="opts">
+      <input type="radio" name="strat" id="s-a" checked />
+      <input type="radio" name="strat" id="s-b" />
+      <input type="radio" name="strat" id="s-c" />
+      <label for="s-a">A</label>
+      <label for="s-b">B</label>
+      <label for="s-c">C</label>
+      <div class="detail" data-for="a"><p>Option A detail.</p></div>
+      <div class="detail" data-for="b">
+        <p id="b-para">Take a maintenance window: freeze writes, dump, restore, repoint, unfreeze.</p>
+        <section data-htmlit-answer data-question="Elaborate?" data-htmlit-answer-for="cm-b">
+          <p>Concretely, the window looks like this:</p>
+          <ol>
+            <li>Freeze writes and drain in-flight transactions.</li>
+            <li>Dump the old primary and restore into the new cluster.</li>
+            <li>Repoint the app, validate, then lift maintenance.</li>
+          </ol>
+        </section>
+      </div>
+      <div class="detail" data-for="c"><p>Option C detail.</p></div>
+    </div>
+  </main>
+</body>
+</html>

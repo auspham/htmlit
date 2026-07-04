@@ -1,0 +1,24 @@
+{
+  "name": "htmlit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dev tooling and tests for the htmlit review-surface skill. The skill itself is pure Python and needs no runtime dependencies; this package only powers the browser-based client tests.",
+  "type": "module",
+  "license": "MIT",
+  "author": "auspham",
+  "homepage": "https://github.com/auspham/htmlit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/auspham/htmlit.git"
+  },
+  "scripts": {
+    "test": "node --test tests/client/*.test.mjs",
+    "test:client": "node --test tests/client/*.test.mjs"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.15.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

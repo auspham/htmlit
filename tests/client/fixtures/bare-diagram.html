@@ -1,0 +1,13 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Bare artifact</title></head>
+<body>
+  <h1>Bare artifact with no CSS</h1>
+  <p>This artifact ships zero styling, and one diagram has invalid syntax.</p>
+  <pre><code class="language-mermaid">flowchart TB
+  A(Start (here)) --> B{Is it ok?}
+  B -->|yes (safe)| C[Done]</code></pre>
+  <pre><code class="language-mermaid">flowchart LR
+  X["Load"] --> Y["Render"]</code></pre>
+</body>
+</html>

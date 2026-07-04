@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>htmlit mermaid drag fixture</title>
+</head>
+<body>
+  <h1>Mermaid rearrange fixture</h1>
+
+  <p>A plain left-to-right flow with no subgraphs.</p>
+  <pre><code class="language-mermaid">flowchart LR
+  A["start"] --> B["middle"] --> C["decision"] --> D["end"]</code></pre>
+
+  <p>A top-to-bottom flow whose subgraphs are wired together. Dragging a node
+  inside a subgraph must not disturb the arrows between subgraphs.</p>
+  <pre><code class="language-mermaid">flowchart TB
+  subgraph S1["Original"]
+    a1["first commit"] --> a2["more commits"] --> a3["head"]
+  end
+  subgraph S2["First attempt"]
+    b1["messy redaction"] --> b2["signpost commit"]
+  end
+  subgraph S3["Clean rewrite"]
+    c1["rewritten history"] --> c2["clean head"]
+  end
+  S1 -->|"redact then filter"| S2
+  S1 ==>|"restore and rewrite"| S3
+  S2 -.->|"discarded"| S3</code></pre>
+</body>
+</html>

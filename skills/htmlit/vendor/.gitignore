@@ -1,0 +1,5 @@
+# Vendored third-party assets (Mermaid, highlight.js, Idiomorph) are downloaded on
+# demand with `htmlit vendor`, and the client falls back to the CDN when they are
+# absent, so none of them are committed. This file keeps the directory in git.
+*
+!.gitignore

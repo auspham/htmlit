@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><title>Tabbed diagrams</title>
+  <style>
+    body { font-family: system-ui, sans-serif; }
+    .pane { display: none; }
+    #t-a:checked ~ .panes .pane-a,
+    #t-b:checked ~ .panes .pane-b { display: block; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Tabbed diagrams</h1>
+    <input type="radio" name="t" id="t-a" checked />
+    <input type="radio" name="t" id="t-b" />
+    <div class="tabs"><label for="t-a">A</label><label for="t-b">B</label></div>
+    <div class="panes">
+      <div class="pane pane-a">
+        <pre><code class="language-mermaid">flowchart LR
+  V1["Visible node one"] --> V2["Visible node two"]</code></pre>
+      </div>
+      <div class="pane pane-b">
+        <pre><code class="language-mermaid">flowchart LR
+  H1["Hidden node one"] --> H2["Hidden node two"] --> H3["Hidden node three"]</code></pre>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Local htmlit runtime state (should never be committed)
+.htmlit/
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Migrating auth to the identity service</title>
+  <style>
+    :root {
+      --bg: #ffffff; --fg: #1f2328; --muted: #6b7280; --card: #ffffff;
+      --line: #d0d7de; --soft: #f6f8fa; --accent: #7c3aed; --good: #1a7f37; --bad: #cf222e;
+      color-scheme: light dark;
+    }
+    html.dark {
+      --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --card: #161b22;
+      --line: #30363d; --soft: #161b22; --accent: #a371f7; --good: #3fb950; --bad: #f85149;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); line-height: 1.6;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 40px 28px 120px; }
+    h1 { font-size: 27px; margin: 0 0 6px; letter-spacing: -0.01em; }
+    .sub { color: var(--muted); margin: 0 0 24px; font-size: 15px; }
+    h2 { font-size: 18px; margin: 30px 0 12px; }
+    p { margin: 0 0 14px; }
+    .callout { border-left: 3px solid var(--accent); background: var(--soft);
+      border-radius: 10px; padding: 14px 18px; margin: 18px 0; }
+    .callout.good { border-left-color: var(--good); }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+    :not(pre) > code { background: var(--soft); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+    pre { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow: auto; margin: 0; }
+    strong { color: var(--fg); }
+    .tag { display:inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px;
+      border-radius: 999px; background: var(--accent); color: #fff; letter-spacing: .02em; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <span class="tag">MIGRATION PLAN</span>
+    <h1>Should we migrate auth to the new identity service?</h1>
+    <p class="sub">A phased plan with the risk trade-offs and a rollout diagram.</p>
+
+    <p><strong>Short answer: yes, but in three phases, not one.</strong> The current monolith signs its own
+      sessions, so a big-bang cutover would invalidate every logged-in user the moment we flip the switch.
+      A dual-write phase lets the new identity service take over gradually while the old path stays a safe
+      fallback, so we never have a window where nobody can log in.</p>
+
+    <div class="callout good">
+      <strong>Recommendation.</strong> Start with a <strong>dual-write</strong> phase: mirror new sessions into
+      the identity service while the monolith still owns reads. Promote reads only once parity holds for a week.
+    </div>
+
+    <h2>Rollout</h2>
+    <p>Each phase is independently reversible. The rollback edge below is the important one: if parity checks
+      fail during cutover, we fall straight back to the monolith with zero data loss.</p>
+
+    <pre><code class="language-mermaid">flowchart TB
+  A["Monolith owns auth"] --> B{"Dual-write sessions?"}
+  B -->|"yes (safe)"| C["Identity service mirrors sessions"]
+  B -->|"no (risky)"| D["Big-bang cutover"]
+  C --> E["Reads move to identity service"]
+  E --> F["Retire monolith auth"]
+  D -.->|"rollback"| A</code></pre>
+
+    <h2>Why not cut over in one pass?</h2>
+    <p>The monolith mints opaque session tokens that only it can validate. Until the identity service has been
+      mirroring those sessions long enough to prove parity, a single cutover is a coin flip on every active
+      login. The extra phase buys us a clean rollback for the price of a week of dual-write.</p>
+
+    <pre><code class="language-python">def issue_session(user, dual_write=True):
+    token = identity.mint(user)          # new service is the source of truth
+    if dual_write:
+        legacy.mirror(user, token)       # keep the monolith warm as a fallback
+    return token</code></pre>
+
+    <h2>The change, as a diff</h2>
+    <p>Concretely, <code>issue_session</code> stops writing only to the monolith and starts minting through the
+      identity service, keeping the legacy write as a fallback:</p>
+
+    <pre><code class="language-diff">@@ -14,2 +14,5 @@ auth/session.py
+ def issue_session(user):
+-    return legacy.mint(user)
++    token = identity.mint(user)          # new service is the source of truth
++    if dual_write_enabled(user):
++        legacy.mirror(user, token)       # keep the monolith warm as a fallback
++    return token</code></pre>
+  </main>
+</body>
+</html>

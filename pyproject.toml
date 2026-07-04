@@ -1,0 +1,39 @@
+[project]
+name = "htmlit"
+version = "1.0.0"
+description = "A tiny, self-contained collaborative review surface for HTML artifacts, packaged as an agent skill."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "auspham" }]
+
+# The skill itself has zero runtime dependencies (Python standard library only).
+# These are development-time tools for tests and linting.
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+extend-exclude = ["skills/htmlit/vendor"]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "W",   # pycodestyle warnings
+  "I",   # isort
+  "UP",  # pyupgrade
+  "B",   # flake8-bugbear
+  "C4",  # flake8-comprehensions
+]
+# The skill deliberately keeps broad excepts around best-effort filesystem and
+# network calls (it must never crash a review), so allow them where annotated.
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]

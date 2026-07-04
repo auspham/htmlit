@@ -1,0 +1,4 @@
+# Python bytecode caches, generated when the daemon or CLI runs. These must never
+# be committed alongside the skill wherever it is installed or vendored.
+__pycache__/
+*.pyc
