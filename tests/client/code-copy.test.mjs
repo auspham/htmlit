@@ -15,6 +15,7 @@ import { startReview } from "./harness.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(HERE, "fixtures", "code-blocks.html");
+const ARTIFACT_BORDER = join(HERE, "fixtures", "code-artifact-border.html");
 const state = { browser: null, unavailable: null };
 
 before(async () => {
@@ -57,6 +58,37 @@ test("code blocks are borderless with a Copy button; diffs stay framed without o
     assert.ok(info.codeHasLinenos, "a code block should keep its line numbers");
     assert.notEqual(info.diffBorder, "0px", "a diff should keep its frame");
     assert.ok(!info.diffHasCopy, "a diff should not have a Copy button");
+  } finally {
+    if (page) await page.close();
+    if (review) await review.stop();
+  }
+});
+
+test("an artifact's own code{border} does not leak into the enhanced code block", async (t) => {
+  if (state.unavailable) return t.skip(state.unavailable);
+  let review, page;
+  try {
+    review = await startReview(ARTIFACT_BORDER);
+    page = await state.browser.newPage();
+    await page.setViewport({ width: 1000, height: 900 });
+    await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
+    await page.goto(review.url, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => document.querySelector(".htmlit-code-body>pre>code"), { timeout: 20000 });
+    await new Promise((r) => setTimeout(r, 400));
+
+    const info = await page.evaluate(() => {
+      const code = document.querySelector(".htmlit-code-body>pre>code");
+      const inline = document.querySelector("p > code");
+      return {
+        enhancedBorder: getComputedStyle(code).borderTopWidth,
+        inlineBorder: getComputedStyle(inline).borderTopWidth,
+      };
+    });
+    // The enhanced block owns its own (borderless) frame; the artifact's generic
+    // code{border} used to bleed a stray 1px box around the highlighted source.
+    assert.equal(info.enhancedBorder, "0px", "the enhanced code block's <code> should have no border");
+    // The artifact's inline code is left untouched - only the enhanced block is reset.
+    assert.notEqual(info.inlineBorder, "0px", "inline code should keep the artifact's own border");
   } finally {
     if (page) await page.close();
     if (review) await review.stop();
