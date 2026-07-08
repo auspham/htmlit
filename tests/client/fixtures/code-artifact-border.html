@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>htmlit code-block artifact-border fixture</title>
+  <style>
+    :root { --border: #d0d7de; --code-bg: #f6f8fa; }
+    html.dark { --border: #30363d; --code-bg: #161b22; }
+    body { font: 15px/1.6 system-ui, sans-serif; margin: 2rem; color: #1f2328; background: #fff; }
+    html.dark body { color: #e6edf3; background: #0d1117; }
+    /* The artifact styles every <code> - including the one inside a <pre> that
+       htmlit enhances. Its border must not leak into the enhanced code block. */
+    code { background: var(--code-bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
+  </style>
+</head>
+<body>
+  <h1>Artifact-styled code</h1>
+
+  <p>Inline <code>SISMEMBER</code> keeps the artifact's own border; that is fine.</p>
+
+  <pre><code class="language-python">def hello(name: str) -> str:
+    return f"hello, {name}"</code></pre>
+</body>
+</html>

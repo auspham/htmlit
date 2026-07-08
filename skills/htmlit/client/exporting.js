@@ -55,16 +55,32 @@ var ARTIFACT_CSS =
   '.mermaid{position:relative!important;width:100%;height:clamp(260px,52vh,480px)!important;min-height:0!important;margin:14px 0;box-sizing:border-box;overflow:hidden;border:1px solid rgba(0,0,0,.13);border-radius:12px;background:#fcfcfd;}' +
   '.mermaid svg{max-width:100%!important;width:100%!important;height:100%!important;display:block;}' +
   'html.dark .mermaid{border-color:rgba(255,255,255,.13);background:#1b1c21;}' +
-  '.htmlit-code{margin:14px 0;border:1px solid rgba(128,128,140,.28);border-radius:8px;overflow:hidden;background:#fff;}' +
-  'html.dark .htmlit-code{border-color:rgba(140,140,160,.26);background:#0d1117;}' +
+  '.htmlit-code{margin:14px 0;border-radius:8px;overflow:hidden;background:#fff;}' +
+  'html.dark .htmlit-code{background:#0d1117;}' +
+  // A diff keeps its framed box and titled header; a plain code block is borderless.
+  '.htmlit-code.htmlit-diff{border:1px solid rgba(128,128,140,.28);}' +
+  'html.dark .htmlit-code.htmlit-diff{border-color:rgba(140,140,160,.26);}' +
   '.htmlit-code-hd{font:600 11px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;background:rgba(128,128,140,.09);padding:6px 12px;border-bottom:1px solid rgba(128,128,140,.22);}' +
   'html.dark .htmlit-code-hd{color:#8b949e;background:rgba(255,255,255,.04);border-bottom-color:rgba(140,140,160,.2);}' +
+  // Plain code header: no bar, just the language on the left and Copy on the right.
+  '.htmlit-code:not(.htmlit-diff)>.htmlit-code-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;background:transparent;border-bottom:0;padding:4px 6px 2px;}' +
+  '.htmlit-copy{font:500 11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;text-transform:none;letter-spacing:0;color:#57606a;background:rgba(128,128,140,.1);border:1px solid rgba(128,128,140,.3);border-radius:6px;padding:4px 9px;cursor:pointer;}' +
+  '.htmlit-copy:hover{background:rgba(128,128,140,.2);color:#1f2328;}' +
+  'html.dark .htmlit-copy{color:#9198a1;background:rgba(255,255,255,.06);border-color:rgba(140,140,160,.24);}' +
+  'html.dark .htmlit-copy:hover{background:rgba(255,255,255,.11);color:#e6edf3;}' +
+  '.htmlit-copy.htmlit-copied{color:#1a7f37;border-color:rgba(26,127,55,.5);}' +
+  'html.dark .htmlit-copy.htmlit-copied{color:#3fb950;border-color:rgba(63,185,80,.5);}' +
+  '.htmlit-code-actions{display:inline-flex;align-items:center;gap:6px;}' +
+  // The Mermaid source view overlays the (scrollable) diagram, so keep its titled
+  // header pinned and opaque - reusing the code bg - instead of scrolling away.
+  '.htmlit-code[data-htmlit-code]>.htmlit-code-hd{position:sticky;top:0;z-index:2;background:#fff;}' +
+  'html.dark .htmlit-code[data-htmlit-code]>.htmlit-code-hd{background:#0d1117;}' +
   '.htmlit-code-body{display:flex;overflow-x:auto;background:#fff;}' +
   'html.dark .htmlit-code-body{background:#0d1117;}' +
   '.htmlit-linenos{position:sticky;left:0;z-index:1;flex:0 0 auto;box-sizing:border-box;text-align:right;padding:12px 12px;white-space:pre;user-select:none;color:#c2c8d0;background:inherit;border-right:1px solid rgba(128,128,140,.2);}' +
   'html.dark .htmlit-linenos{color:#4b5563;}' +
   '.htmlit-code-body>pre{margin:0!important;padding:12px 16px!important;flex:1 1 auto;min-width:0;overflow:visible!important;background:transparent!important;border:0!important;border-radius:0!important;}' +
-  '.htmlit-code-body>pre>code{background:transparent!important;padding:0!important;overflow:visible!important;white-space:pre!important;display:block;}' +
+  '.htmlit-code-body>pre>code{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important;overflow:visible!important;white-space:pre!important;display:block;}' +
   '.htmlit-code-body>pre>code,.htmlit-linenos{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace!important;font-size:13px!important;line-height:1.55!important;tab-size:2;}' +
   '.htmlit-diff .htmlit-code-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;-webkit-user-select:none;user-select:none;}' +
   '.htmlit-diff-toggle{display:inline-flex;align-items:center;gap:2px;padding:2px;border:1px solid rgba(128,128,140,.22);border-radius:999px;background:rgba(255,255,255,.55);}' +

@@ -61,8 +61,19 @@ export function anchorContainerEl(h) {
 export function anchorRight(h) {
   var el = anchorContainerEl(h);
   if (!el) return null;
-  var r = el.getBoundingClientRect();
-  return (r.width || r.height) ? r.right : null;
+  // The rail hugs the right of the content COLUMN, not the immediate container: a
+  // comment inside a narrow cell, grid card or <code> span would otherwise drag its
+  // card into the middle of the page. Take the widest block-level ancestor's right
+  // edge (up to, but not including, <body>) - that is the text column's edge.
+  var best = null;
+  for (var n = el; n && n !== document.body && n.nodeType === 1; n = n.parentElement) {
+    var display;
+    try { display = getComputedStyle(n).display; } catch (e) { continue; }
+    if (display === "inline") continue; // inline spans don't define the column width
+    var r = n.getBoundingClientRect();
+    if ((r.width || r.height) && (best == null || r.right > best)) best = r.right;
+  }
+  return best;
 }
 export function setRailMargin(on) {
   if (on === railOn) return;

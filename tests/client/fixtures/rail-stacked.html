@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>htmlit stacked-cards fixture</title>
+  <style>
+    body { margin: 0; background: #f6f8fa; color: #1f2328; font: 15px/1.6 system-ui, sans-serif; }
+    .layout { max-width: 900px; margin: 0 auto; padding: 24px; }
+    code { background: #eef1f4; border: 1px solid #d0d7de; border-radius: 5px; padding: 1px 5px; font-family: ui-monospace, Menlo, monospace; }
+    p { margin: 14px 0; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <h1>Several comments high up must not block lower content</h1>
+    <p>Line one references <code id="c1">alpha</code> in the pipeline.</p>
+    <p>Line two references <code id="c2">bravo</code> in the pipeline.</p>
+    <p>Line three references <code id="c3">charlie</code> in the pipeline.</p>
+    <p>Line four references <code id="c4">delta</code> in the pipeline.</p>
+    <p id="target">A leaked testbed lock line lower down that must stay selectable and annotatable.</p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,162 @@
+/**
+ * Browser test for code-block chrome: a plain code block is borderless and carries a
+ * Copy button, a diff stays framed with NO copy button, and the Mermaid "Code" toggle
+ * reveals the source as a real code block (line numbers) with its own Copy button.
+ *
+ * Skips rather than fails when no browser or Python is available.
+ */
+
+import assert from "node:assert/strict";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { after, before, test } from "node:test";
+
+import { startReview } from "./harness.mjs";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const FIXTURE = join(HERE, "fixtures", "code-blocks.html");
+const ARTIFACT_BORDER = join(HERE, "fixtures", "code-artifact-border.html");
+const state = { browser: null, unavailable: null };
+
+before(async () => {
+  try {
+    const { default: puppeteer } = await import("puppeteer");
+    state.browser = await puppeteer.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+  } catch (err) {
+    state.unavailable = `no browser available: ${err.message}`;
+  }
+});
+
+after(async () => {
+  if (state.browser) await state.browser.close();
+});
+
+test("code blocks are borderless with a Copy button; diffs stay framed without one", async (t) => {
+  if (state.unavailable) return t.skip(state.unavailable);
+  let review, page;
+  try {
+    review = await startReview(FIXTURE);
+    page = await state.browser.newPage();
+    await page.setViewport({ width: 1000, height: 900 });
+    await page.goto(review.url, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => document.querySelector(".htmlit-code:not(.htmlit-diff)") && document.querySelector(".mermaid svg"), { timeout: 20000 });
+    await new Promise((r) => setTimeout(r, 400));
+
+    const info = await page.evaluate(() => {
+      const code = document.querySelector(".htmlit-code:not(.htmlit-diff)");
+      const diff = document.querySelector(".htmlit-diff");
+      return {
+        codeBorder: getComputedStyle(code).borderTopWidth,
+        codeHasCopy: !!code.querySelector(".htmlit-copy"),
+        codeHasLinenos: !!code.querySelector(".htmlit-linenos"),
+        diffBorder: getComputedStyle(diff).borderTopWidth,
+        diffHasCopy: !!diff.querySelector(".htmlit-copy"),
+      };
+    });
+    assert.equal(info.codeBorder, "0px", "a plain code block should have no border");
+    assert.ok(info.codeHasCopy, "a code block should have a Copy button");
+    assert.ok(info.codeHasLinenos, "a code block should keep its line numbers");
+    assert.notEqual(info.diffBorder, "0px", "a diff should keep its frame");
+    assert.ok(!info.diffHasCopy, "a diff should not have a Copy button");
+  } finally {
+    if (page) await page.close();
+    if (review) await review.stop();
+  }
+});
+
+test("an artifact's own code{border} does not leak into the enhanced code block", async (t) => {
+  if (state.unavailable) return t.skip(state.unavailable);
+  let review, page;
+  try {
+    review = await startReview(ARTIFACT_BORDER);
+    page = await state.browser.newPage();
+    await page.setViewport({ width: 1000, height: 900 });
+    await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
+    await page.goto(review.url, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => document.querySelector(".htmlit-code-body>pre>code"), { timeout: 20000 });
+    await new Promise((r) => setTimeout(r, 400));
+
+    const info = await page.evaluate(() => {
+      const code = document.querySelector(".htmlit-code-body>pre>code");
+      const inline = document.querySelector("p > code");
+      return {
+        enhancedBorder: getComputedStyle(code).borderTopWidth,
+        inlineBorder: getComputedStyle(inline).borderTopWidth,
+      };
+    });
+    // The enhanced block owns its own (borderless) frame; the artifact's generic
+    // code{border} used to bleed a stray 1px box around the highlighted source.
+    assert.equal(info.enhancedBorder, "0px", "the enhanced code block's <code> should have no border");
+    // The artifact's inline code is left untouched - only the enhanced block is reset.
+    assert.notEqual(info.inlineBorder, "0px", "inline code should keep the artifact's own border");
+  } finally {
+    if (page) await page.close();
+    if (review) await review.stop();
+  }
+});
+
+test("the Mermaid Code view mirrors a normal code block: a MERMAID title, matching background, Copy and Diagram toggle", async (t) => {
+  if (state.unavailable) return t.skip(state.unavailable);
+  let review, page;
+  try {
+    review = await startReview(FIXTURE);
+    page = await state.browser.newPage();
+    await page.setViewport({ width: 1000, height: 900 });
+    await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
+    await page.goto(review.url, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => document.querySelector(".mermaid [data-htmlit-codebtn]"), { timeout: 20000 });
+    await new Promise((r) => setTimeout(r, 400));
+
+    const before = await page.evaluate(() => {
+      const view = document.querySelector(".mermaid [data-htmlit-code]");
+      return { viewHidden: view ? getComputedStyle(view).display === "none" : null };
+    });
+    assert.equal(before.viewHidden, true, "the source view is hidden until Code is clicked");
+
+    await page.evaluate(() => document.querySelector(".mermaid [data-htmlit-codebtn]").click());
+    await new Promise((r) => setTimeout(r, 200));
+
+    const after = await page.evaluate(() => {
+      const view = document.querySelector(".mermaid [data-htmlit-code]");
+      const lang = view.querySelector(".htmlit-code-hd .htmlit-code-lang");
+      const enhanced = document.querySelector(".htmlit-code:not(.htmlit-diff):not([data-htmlit-code]) .htmlit-code-body");
+      const copy = view.querySelector("[data-htmlit-codecopy]");
+      copy.click();
+      return {
+        isCodeClass: view.classList.contains("htmlit-code"),
+        hasHeader: !!view.querySelector(".htmlit-code-hd"),
+        langText: lang ? lang.textContent : null,
+        langUppercased: lang ? getComputedStyle(lang).textTransform : null,
+        viewBg: getComputedStyle(view).backgroundColor,
+        enhancedBg: enhanced ? getComputedStyle(enhanced.parentElement).backgroundColor : null,
+        hasLinenos: !!view.querySelector(".htmlit-linenos"),
+        highlighted: !!view.querySelector("code.hljs span[class^='hljs-']"),
+        copyVisible: copy.offsetParent !== null,
+        copyLabel: copy.textContent,
+      };
+    });
+    assert.ok(after.isCodeClass, "the source view reuses the .htmlit-code chrome");
+    assert.ok(after.hasHeader, "the source view has a titled header like a normal block");
+    assert.equal(after.langText, "mermaid", "the header labels the block MERMAID");
+    assert.equal(after.langUppercased, "uppercase", "the label is uppercased like a normal block");
+    assert.equal(after.viewBg, after.enhancedBg, "the source view background matches a normal code block");
+    assert.ok(after.hasLinenos, "the Mermaid source should render with line numbers");
+    assert.ok(after.highlighted, "the Mermaid source should be syntax-highlighted");
+    assert.ok(after.copyVisible, "the Copy button shows in the header with the code view");
+    assert.equal(after.copyLabel, "Copied", "clicking Copy should give feedback");
+
+    // The header's Diagram button closes the source view and restores the diagram.
+    await page.evaluate(() => [...document.querySelectorAll(".mermaid [data-htmlit-code] .htmlit-copy")].find((b) => b.textContent === "Diagram").click());
+    await new Promise((r) => setTimeout(r, 150));
+    const closed = await page.evaluate(() => {
+      const view = document.querySelector(".mermaid [data-htmlit-code]");
+      const codeBtn = document.querySelector(".mermaid [data-htmlit-codebtn]");
+      return { viewHidden: getComputedStyle(view).display === "none", codeBtnVisible: codeBtn.offsetParent !== null };
+    });
+    assert.equal(closed.viewHidden, true, "Diagram closes the source view");
+    assert.ok(closed.codeBtnVisible, "the Code button returns on the diagram");
+  } finally {
+    if (page) await page.close();
+    if (review) await review.stop();
+  }
+});
