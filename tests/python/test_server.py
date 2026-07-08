@@ -68,6 +68,30 @@ def test_poll_times_out_without_feedback(server: Client, make_artifact: Callable
     assert body["type"] == "timeout"
 
 
+def test_unbalanced_html_surfaces_as_a_layout_warning(server: Client, make_artifact: Callable[..., Path]) -> None:
+    # The browser repairs malformed markup before the client sees it, so htmlit
+    # re-reads the raw artifact when the client reports layout and folds in any
+    # container imbalance - here a stray </div> that would collapse the wrapper.
+    artifact = make_artifact(body='<div class="wrap"><p>hi</p></div></div><h2>escaped</h2>')
+    key = _open_session(server, artifact)
+
+    status, _ = server.post(f"/api/{key}/layout-warnings", {"layout_warnings": []})
+    assert status == 200
+
+    status, feedback = server.get(f"/api/poll?key={key}&timeout=5")
+    assert status == 200 and feedback["type"] == "feedback"
+    kinds = [w["kind"] for w in feedback["layout_warnings"]]
+    assert "unbalanced-html" in kinds
+
+
+def test_well_formed_html_reports_no_structure_warning(server: Client, make_artifact: Callable[..., Path]) -> None:
+    key = _open_session(server, make_artifact(body="<div><ul><li>a<li>b</ul><p>ok</div>"))
+    status, _ = server.post(f"/api/{key}/layout-warnings", {"layout_warnings": []})
+    assert status == 200
+    status, body = server.get(f"/api/poll?key={key}&timeout=1", timeout=5)
+    assert body["type"] == "timeout"  # nothing pushed, so the poll just times out
+
+
 def test_agent_reply_appends_to_chat(server: Client, make_artifact: Callable[..., Path]) -> None:
     key = _open_session(server, make_artifact())
     status, _ = server.post("/api/agent-reply", {"key": key, "text": "done, fixed the title"})

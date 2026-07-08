@@ -23,6 +23,7 @@ from .models import FeedbackItem, Highlight, LayoutWarning, Prompt, TextRange
 from .page import build_page_config, inject_client
 from .session import Hub, Session
 from .sidecar import delete_artifact, remove_sidecar
+from .validation import html_structure_warnings
 
 VERSION = config.source_version()
 HUB = Hub()
@@ -341,9 +342,21 @@ class Handler(BaseHTTPRequestHandler):
             return
         raw = self._read_json().get("layout_warnings", [])
         warnings: list[LayoutWarning] = raw if isinstance(raw, list) else []
+        # The browser repairs malformed markup before the client runs, so it cannot
+        # report unbalanced tags. Re-read the raw file here (this fires on load and
+        # after every morph) and fold in any structural problems, so the authoring
+        # agent is told to fix the source instead of shipping a collapsed layout.
+        warnings = warnings + self._artifact_structure_warnings(session)
         if warnings:
             session.push_feedback({"type": FeedbackKind.LAYOUT_WARNINGS.value, "layout_warnings": warnings})
         self._json(200, {"ok": True})
+
+    def _artifact_structure_warnings(self, session: Session) -> list[LayoutWarning]:
+        try:
+            html = Path(session.path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return []
+        return html_structure_warnings(html)
 
     def _agent_reply(self) -> None:
         data = self._read_json()
