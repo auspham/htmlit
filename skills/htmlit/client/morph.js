@@ -1,6 +1,6 @@
 import { CFG, KEY, Presence, SseEvent, state as appState } from "./state.js";
 import { root, ui, applyDocTitle } from "./dom.js";
-import { api, esc } from "./util.js";
+import { api, copyText, esc } from "./util.js";
 import { decorateAnswers } from "./exporting.js";
 import { detectNewContent, highlightNew, initContent } from "./content.js";
 import { refreshFavicon } from "./favicon.js";
@@ -61,13 +61,6 @@ export function reload() {
 }
 
 export function resumeCmd() { return "htmlit resume " + (CFG.file || ""); }
-export function copyText(t) {
-  try { if (navigator.clipboard) return navigator.clipboard.writeText(t); } catch (e) {}
-  try {
-    var ta = document.createElement("textarea"); ta.value = t; ta.setAttribute("data-htmlit", "");
-    document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
-  } catch (e) {}
-}
 // Render the "kept - here's how to resume" box. `mode`: "live" (still open) or "ended".
 export function renderKeepHint(mode) {
   if (!ui.keephint) return;

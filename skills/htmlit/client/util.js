@@ -38,3 +38,11 @@ export function cssPath(el) {
   }
   return parts.join(" > ");
 }
+// Copy text to the clipboard, falling back to a hidden textarea + execCommand.
+export function copyText(t) {
+  try { if (navigator.clipboard) return navigator.clipboard.writeText(t); } catch (e) {}
+  try {
+    var ta = document.createElement("textarea"); ta.value = t; ta.setAttribute("data-htmlit", "");
+    document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+  } catch (e) {}
+}

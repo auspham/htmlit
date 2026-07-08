@@ -303,7 +303,8 @@ The injected client auto-renders, on first load and after every morph:
   diagram element tracks it as it moves. A minimal zoom control sits at the
   bottom-left showing the current **zoom %** (relative to the fitted view); click
   the percentage to reset to fit. A **Code** button at the top-right toggles the
-  diagram for its Mermaid source (read or copy the syntax in place). A diagram
+  diagram for its Mermaid source, shown as a syntax-highlighted code block (line
+  numbers) with a **Copy** button to grab the syntax in place. A diagram
   inside a hidden tab or a closed `<details>` renders **automatically the moment it
   is revealed**, so it is safe to put diagrams in tabs/accordions - they never
   collapse. Manual
@@ -314,10 +315,10 @@ The injected client auto-renders, on first load and after every morph:
   shows the normal arrow cursor at rest and switches to a grabbing cursor only
   while you actually drag.)
 - **Code** - `<pre><code class="language-python">...</code></pre>` is highlighted
-  by highlight.js and rendered in a framed block with a **language-name header**
-  and a **line-number gutter** (the gutter stays pinned while long lines scroll
+  by highlight.js and rendered with a **language name** and a **Copy** button on top
+  and a pinned **line-number gutter** (the gutter stays put while long lines scroll
   horizontally). The language shown comes from the `language-xxx` class.
-- **Diffs** - write a fenced `diff` block or `<pre><code class="language-diff">...</code></pre>`. htmlit renders it with full-row red and green lines, aligned old and new line numbers, and a Unified/Split toggle. No custom CSS is needed.
+- **Diffs** - write a fenced `diff` block or `<pre><code class="language-diff">...</code></pre>`. htmlit renders it in a framed block with full-row red and green lines, aligned old and new line numbers, and a Unified/Split toggle (no Copy button). No custom CSS is needed.
 
 - **Theme** - the panel's **Dark** toggle flips `html.dark`, `html[data-theme]`,
   `color-scheme`, the highlight.js theme, and Mermaid's theme. Style your

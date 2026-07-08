@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>htmlit code-block fixture</title>
+  <style>
+    body { font: 15px/1.6 system-ui, sans-serif; margin: 2rem; color: #1f2328; background: #fff; }
+    html.dark body { color: #e6edf3; background: #0d1117; }
+  </style>
+</head>
+<body>
+  <h1>Code, diff and diagram rendering</h1>
+
+  <pre><code class="language-python">def hello(name: str) -> str:
+    return f"hello, {name}"</code></pre>
+
+  <pre><code class="language-diff">@@ -1,2 +1,2 @@
+ def hello(name):
+-    return "hi " + name
++    return f"hello, {name}"</code></pre>
+
+  <pre><code class="language-mermaid">flowchart LR
+  A["start"] --> B["end"]</code></pre>
+</body>
+</html>

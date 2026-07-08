@@ -4,6 +4,7 @@ import { root, shadow, ui } from "./dom.js";
 import { theme } from "./theme.js";
 import { renderHighlights, scheduleReposition } from "./overlays.js";
 import { positionRail } from "./rail.js";
+import { makeCopyButton, makeLinenos, lineCount, highlightMermaidSource } from "./codeblock.js";
 import { clearPending, diagramClick } from "./annotate.js";
 
 export const diagramLayouts = {}; // diagram source text -> saved arrangement
@@ -180,7 +181,7 @@ export function enhanceMermaid() {
   // (the bar is data-htmlit, so the morph won't delete it and relocates it
   // instead). Drop any bar that is no longer parented by a .mermaid frame
   // before (re)building - this also cleans up any already-stranded bar.
-  document.querySelectorAll("[data-htmlit-tools],[data-htmlit-codebtn],[data-htmlit-code]").forEach(function (barEl) {
+  document.querySelectorAll("[data-htmlit-tools],[data-htmlit-codebtn],[data-htmlit-code],[data-htmlit-codecopy]").forEach(function (barEl) {
     var pp = barEl.parentElement;
     if (!pp || !pp.classList || !pp.classList.contains("mermaid")) barEl.remove();
   });
@@ -665,20 +666,38 @@ if (box && box.classList && box.classList.contains("mermaid")) {
     bar.addEventListener("pointerdown", function (ev) { ev.stopPropagation(); });
   }
 
-  // "Code" toggle (top-right): reveal the diagram's Mermaid source in place, so a
-  // reader can inspect or copy the syntax without leaving the page. Added once and
-  // cleaned up on morph alongside the zoom bar.
+  // "Code" toggle (top-right): reveal the diagram's Mermaid source in place - as a
+  // real code block (line numbers + a Copy button) - so a reader can inspect or copy
+  // the syntax without leaving the page. Added once and cleaned up on morph alongside
+  // the zoom bar.
   if (box && box.classList && box.classList.contains("mermaid") && box.dataset.htmlitSrc && !box.querySelector("[data-htmlit-codebtn]")) {
     var cdark = theme === "dark";
-    var codeView = document.createElement("pre");
+    var mSrc = box.dataset.htmlitSrc;
+    var codeView = document.createElement("div");
     codeView.setAttribute("data-htmlit", "");
     codeView.setAttribute("data-htmlit-code", "");
-    codeView.textContent = box.dataset.htmlitSrc;
-    codeView.style.cssText = "position:absolute;inset:0;margin:0;display:none;z-index:6;overflow:auto;padding:14px 16px 44px;box-sizing:border-box;" +
-      "font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;tab-size:2;-webkit-user-select:text;user-select:text;" +
-      "background:" + (cdark ? "#0d1117" : "#f6f8fa") + ";color:" + (cdark ? "#e6edf3" : "#1f2328") + ";";
+    codeView.style.cssText = "position:absolute;inset:0;margin:0;display:none;z-index:6;overflow:auto;box-sizing:border-box;" +
+      "background:" + (cdark ? "#0d1117" : "#f6f8fa") + ";";
+    var codeBody = document.createElement("div");
+    codeBody.className = "htmlit-code-body";
+    codeBody.style.cssText = "background:transparent;min-height:100%;";
+    codeBody.appendChild(makeLinenos(lineCount(mSrc)));
+    var codePre = document.createElement("pre");
+    var codeEl = document.createElement("code");
+    codeEl.textContent = mSrc;
+    codePre.appendChild(codeEl);
+    highlightMermaidSource(codeEl);
+    codeBody.appendChild(codePre);
+    codeView.appendChild(codeBody);
     codeView.addEventListener("pointerdown", function (ev) { ev.stopPropagation(); });
     box.appendChild(codeView);
+
+    var copyBtn = makeCopyButton(function () { return mSrc; });
+    copyBtn.setAttribute("data-htmlit", "");
+    copyBtn.setAttribute("data-htmlit-codecopy", "");
+    copyBtn.style.cssText = "position:absolute;right:96px;top:10px;z-index:7;display:none;";
+    copyBtn.addEventListener("pointerdown", function (ev) { ev.stopPropagation(); });
+    box.appendChild(copyBtn);
 
     var codeBtn = document.createElement("button");
     codeBtn.type = "button";
@@ -695,6 +714,7 @@ if (box && box.classList && box.classList.contains("mermaid")) {
       ev.stopPropagation(); ev.preventDefault();
       var opening = codeView.style.display === "none";
       codeView.style.display = opening ? "block" : "none";
+      copyBtn.style.display = opening ? "block" : "none";
       var svgEl = box.querySelector("svg");
       if (svgEl) svgEl.style.display = opening ? "none" : "";
       var zbar = box.querySelector("[data-htmlit-tools]");
