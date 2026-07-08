@@ -17,6 +17,7 @@ import { startReview } from "./harness.mjs";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(HERE, "fixtures", "rail-narrow-anchor.html");
 const STACKED = join(HERE, "fixtures", "rail-stacked.html");
+const LONGQUOTE = join(HERE, "fixtures", "rail-longquote.html");
 const state = { browser: null, unavailable: null };
 
 const SEED = {
@@ -119,6 +120,45 @@ test("stacked comment cards do not cover (and block selection of) lower content"
       return null;
     });
     assert.equal(covered, null, `no card should cover the target line (covered at ${covered && covered.x}px)`);
+  } finally {
+    if (page) await page.close();
+    if (review) await review.stop();
+  }
+});
+
+test("a long comment quote previews two full lines instead of a clipped one", async (t) => {
+  if (state.unavailable) return t.skip(state.unavailable);
+  let review, page;
+  try {
+    review = await startReview(LONGQUOTE);
+    const quote = "At our cancel volume (rare, tiny messages) the broadcast cost is negligible, so classic first is the pragmatic call; the durable set means a missed message is never fatal anyway.";
+    await fetch(`${review.base}/api/${review.key}/highlights`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ highlights: [{
+        id: "lq", kind: "comment", prompt: "note", comments: ["agree"], text: quote,
+        range: { container: "#q", start: 0, end: quote.length, text: quote },
+      }] }),
+    });
+    page = await state.browser.newPage();
+    await page.setViewport({ width: 1600, height: 900 });
+    await page.goto(review.url, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(
+      () => { const c = document.getElementById("htmlit-chrome"); return c && c.shadowRoot && c.shadowRoot.querySelector(".rail .card .card-q"); },
+      { timeout: 20000 },
+    );
+    await new Promise((r) => setTimeout(r, 400));
+
+    const m = await page.evaluate(() => {
+      const q = document.getElementById("htmlit-chrome").shadowRoot.querySelector(".rail .card .card-q");
+      const cs = getComputedStyle(q);
+      const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      return { contentH: q.clientHeight - pad, lineHeight: parseFloat(cs.lineHeight) };
+    });
+    // The bug clamped the box to ~1.5 lines (a hard max-height cut the second line
+    // mid-glyph). The -webkit-line-clamp:2 preview must show two whole lines.
+    assert.ok(m.contentH >= 1.9 * m.lineHeight, `quote should show ~2 lines (content ${Math.round(m.contentH)}px, line ${Math.round(m.lineHeight)}px)`);
+    assert.ok(m.contentH <= 2.2 * m.lineHeight, `quote should stay clamped to 2 lines (content ${Math.round(m.contentH)}px, line ${Math.round(m.lineHeight)}px)`);
   } finally {
     if (page) await page.close();
     if (review) await review.stop();
