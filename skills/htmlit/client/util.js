@@ -19,15 +19,19 @@ export function loadScript(src) {
     document.head.appendChild(s);
   });
 }
-// a CSS selector for the element - sent to the agent, never shown to the user
+// A CSS selector that re-resolves to this exact element - sent to the agent and
+// used to re-anchor a selection after a morph. It must be rooted (at an ancestor
+// id, otherwise <body>): an unrooted path such as "div:nth-of-type(1) > ul > li"
+// floats, so document.querySelector can match a deeper, earlier subtree with the
+// same tag/nth-of-type skeleton and resolve to the wrong element.
 export function cssPath(el) {
   if (!el || el.nodeType !== 1) return "";
   if (el.id) return "#" + CSS.escape(el.id);
   var parts = [];
   var node = el;
-  while (node && node.nodeType === 1 && node !== document.body && parts.length < 6) {
+  while (node && node.nodeType === 1 && node !== document.body) {
+    if (node.id) { parts.unshift("#" + CSS.escape(node.id)); return parts.join(" > "); }
     var sel = node.nodeName.toLowerCase();
-    if (node.id) { parts.unshift("#" + CSS.escape(node.id)); break; }
     var parent = node.parentElement;
     if (parent) {
       var same = Array.prototype.filter.call(parent.children, function (c) { return c.nodeName === node.nodeName; });
@@ -36,6 +40,7 @@ export function cssPath(el) {
     parts.unshift(sel);
     node = node.parentElement;
   }
+  parts.unshift("body");
   return parts.join(" > ");
 }
 // Copy text to the clipboard, falling back to a hidden textarea + execCommand.
