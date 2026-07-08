@@ -4,7 +4,7 @@ import { api, cssPath, inChrome } from "./util.js";
 import { highlightNew } from "./content.js";
 import { renderPills } from "./chat.js";
 import { clipRectsToFrame, rectsToArray, renderHighlights } from "./overlays.js";
-import { ceClear, ceText, rebuildRail } from "./rail.js";
+import { ceClear, ceText, rebuildRail, anchorFlashEl, jumpTo } from "./rail.js";
 
 var pending = null;
 var selMenuOpen = false;
@@ -467,6 +467,17 @@ export function onArtifactMouseUp(target) {
     if (ans) { highlightNew([ans]); clearPending(); return; }
     if (buildHlPending(hl)) openSelMenu();
     return;
+  }
+  // Symmetric to the anchor -> answer jump above: a plain click on an agent answer
+  // block's "You asked:" header (the block element itself, not its body content)
+  // jumps back to the spot the user asked about and flashes it. Clicks on the answer
+  // body target a child element, so the answer text stays selectable and commentable.
+  var ansBlock = el && el.matches && el.matches("[data-htmlit-answer]") ? el : null;
+  if (ansBlock && !inChrome(ansBlock)) {
+    var askId = ansBlock.getAttribute("data-htmlit-answer-for");
+    var askHl = askId ? findHighlight(askId) : null;
+    var askEl = askHl ? anchorFlashEl(askHl) : null;
+    if (askEl) { jumpTo(askEl); clearPending(); return; }
   }
   if (pending || selMenuOpen) clearPending();
 }

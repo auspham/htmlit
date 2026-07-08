@@ -41,7 +41,7 @@ export function anchorTopResolved(h) {
 // Bring an anchor (or its answer) into view even when it sits in a collapsed
 // section: reveal the section, re-place the cards for the new layout, then flash and
 // scroll to the target on the next frame (once the reveal has laid out).
-function jumpTo(el) {
+export function jumpTo(el) {
   if (!el) return;
   revealElement(el);
   positionRail();

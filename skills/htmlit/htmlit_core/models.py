@@ -61,6 +61,7 @@ class LayoutWarning(TypedDict, total=False):
 
     severity: str
     kind: str
+    message: str
     offenders: list[str]
 
 

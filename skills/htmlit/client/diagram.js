@@ -35,6 +35,54 @@ export function mEndpoints(d) {
     end: { x: parseFloat(n[n.length - 2]), y: parseFloat(n[n.length - 1]) },
   };
 }
+// Parse an SVG path into its coordinate pairs plus a replay sequence, so the path
+// can be re-emitted with new coordinates but the SAME commands - which is how we
+// preserve an edge's original curve while moving its endpoints. Every command we
+// support (M/L/C/Q/S/T) takes coordinate pairs, so points map one-to-one onto the
+// numbers. Relative commands, H/V (single coordinate) and arcs (A, mixed params)
+// are unsupported: return null so the caller falls back to a straight rebuild.
+export function mParsePath(d) {
+  if (!d) return null;
+  var toks = d.match(/[a-zA-Z]|-?\d*\.?\d+(?:[eE][-+]?\d+)?/g);
+  if (!toks) return null;
+  var pts = [], seq = [], i = 0;
+  while (i < toks.length) {
+    var t = toks[i];
+    if (/[a-zA-Z]/.test(t)) {
+      if ("MLCQST".indexOf(t) === -1) return null; // relative / H / V / A / Z: bail
+      seq.push({ c: t }); i++;
+    } else {
+      if (i + 1 >= toks.length) return null;
+      pts.push({ x: parseFloat(toks[i]), y: parseFloat(toks[i + 1]) });
+      seq.push({ p: pts.length - 1 }); i += 2;
+    }
+  }
+  return pts.length >= 2 ? { pts: pts, seq: seq } : null;
+}
+// Re-emit a parsed path (from mParsePath) with a fresh set of points, shifting into
+// the element's own frame by subtracting its frame offset (ox, oy).
+export function mPathFromSeq(seq, pts, ox, oy) {
+  var out = "";
+  for (var i = 0; i < seq.length; i++) {
+    if (seq[i].c != null) out += seq[i].c;
+    else { var p = pts[seq[i].p]; out += (p.x - ox) + "," + (p.y - oy) + " "; }
+  }
+  return out;
+}
+// The similarity transform (translate + rotate + uniform scale) that maps the segment
+// p0->p1 onto aS->aT. Applied to every point of a path it rigidly carries the whole
+// shape - its curvature and, for parallel edges, their separation - onto the moved
+// endpoints, so nothing collapses to a straight line. Null when p0==p1 (degenerate).
+export function mFitTransform(p0, p1, aS, aT) {
+  var d0x = p1.x - p0.x, d0y = p1.y - p0.y, l2 = d0x * d0x + d0y * d0y;
+  if (l2 < 1e-6) return null;
+  var d1x = aT.x - aS.x, d1y = aT.y - aS.y;
+  var a = (d1x * d0x + d1y * d0y) / l2, b = (d1y * d0x - d1x * d0y) / l2;
+  return function (p) {
+    var vx = p.x - p0.x, vy = p.y - p0.y;
+    return { x: aS.x + a * vx - b * vy, y: aS.y + b * vx + a * vy };
+  };
+}
 export function mRectDist(pt, r) {
   // 0 when pt is inside the box; otherwise the straight-line gap to its border.
   var dx = Math.max(r.left - pt.x, 0, pt.x - r.right);
@@ -308,23 +356,45 @@ if (box && box.classList && box.classList.contains("mermaid")) {
   // g.edgeLabels in a different order than g.edgePaths when self-loops are present,
   // and (in the mermaid.run path) the inner label ids are blank. So match every
   // non-empty label to the edge whose midpoint it sits closest to.
-  function pathMid(el) {
-    try { var L = el.getTotalLength(); if (L) { var pt = el.getPointAtLength(L / 2); return { x: pt.x, y: pt.y }; } } catch (e) {}
-    var ep = mEndpoints(el.getAttribute("d"));
-    return ep ? { x: (ep.start.x + ep.end.x) / 2, y: (ep.start.y + ep.end.y) / 2 } : null;
+  // Sample points along a path, lifted into the common `space` frame. Mermaid places
+  // an edge label ON its edge, so a label's MINIMUM distance to the right path is near
+  // zero - far more reliable for matching than distance to the arc-midpoint, which on
+  // a curved edge sits nowhere near where the label was placed (up by the hub node).
+  function pathSamples(el) {
+    var o = frameOffset(el), pts = [];
+    try {
+      var L = el.getTotalLength();
+      if (L) { for (var i = 0; i <= 24; i++) { var q = el.getPointAtLength((L * i) / 24); pts.push({ x: q.x + o.x, y: q.y + o.y }); } }
+    } catch (e) {}
+    if (!pts.length) { var ep = mEndpoints(el.getAttribute("d")); if (ep) { pts.push({ x: ep.start.x + o.x, y: ep.start.y + o.y }, { x: ep.end.x + o.x, y: ep.end.y + o.y }); } }
+    return pts;
   }
   var pathEls = Array.prototype.slice.call(svg.querySelectorAll("g.edgePaths > path"));
-  var pathMids = pathEls.map(function (el) { return { el: el, mid: pathMid(el), taken: false }; });
+  var pathPts = pathEls.map(pathSamples);
+  var labelEls = Array.prototype.filter.call(svg.querySelectorAll("g.edgeLabels > g.edgeLabel"), function (g) {
+    return (g.textContent || "").trim() && /translate/.test(g.getAttribute("transform") || "");
+  });
+  var labelPos = labelEls.map(function (g) { var o = frameOffset(g), t = mTranslate(g); return { x: t.x + o.x, y: t.y + o.y }; });
+  // Pair labels to paths by GLOBALLY nearest first, not greedily in DOM order: rank
+  // every (label, path) pair by the label's minimum distance to that path, then lock in
+  // each closest pair whose label and path are both still free. Greedy-by-DOM-order (or
+  // matching on the arc-midpoint) mis-bound a label to the wrong edge, so a node drag
+  // then flung that label across the diagram onto an unrelated arrow.
   var labelForPath = new Map();
-  Array.prototype.forEach.call(svg.querySelectorAll("g.edgeLabels > g.edgeLabel"), function (g) {
-    if (!(g.textContent || "").trim() || !/translate/.test(g.getAttribute("transform") || "")) return;
-    var pos = mTranslate(g), best = null, bd = Infinity;
-    pathMids.forEach(function (pm) {
-      if (pm.taken || !pm.mid) return;
-      var dx = pm.mid.x - pos.x, dy = pm.mid.y - pos.y, dd = dx * dx + dy * dy;
-      if (dd < bd) { bd = dd; best = pm; }
+  var pairs = [];
+  labelPos.forEach(function (lp, li) {
+    pathPts.forEach(function (pts, pi) {
+      var best = Infinity;
+      for (var k = 0; k < pts.length; k++) { var dx = pts[k].x - lp.x, dy = pts[k].y - lp.y, d = dx * dx + dy * dy; if (d < best) best = d; }
+      if (best < Infinity) pairs.push({ li: li, pi: pi, d: best });
     });
-    if (best) { best.taken = true; labelForPath.set(best.el, g); }
+  });
+  pairs.sort(function (a, b) { return a.d - b.d; });
+  var labelUsed = [], pathUsed = [];
+  pairs.forEach(function (pr) {
+    if (labelUsed[pr.li] || pathUsed[pr.pi]) return;
+    labelUsed[pr.li] = pathUsed[pr.pi] = true;
+    labelForPath.set(pathEls[pr.pi], labelEls[pr.li]);
   });
 
   var edges = [];
@@ -338,10 +408,18 @@ if (box && box.classList && box.classList.contains("mermaid")) {
     var ep = mEndpoints(el.getAttribute("d"));
     var src = ep ? bindEndpoint({ x: ep.start.x + eo.x, y: ep.start.y + eo.y }) : null;
     var tgt = ep ? bindEndpoint({ x: ep.end.x + eo.x, y: ep.end.y + eo.y }) : null;
+    // Keep the original path (lifted into the common `space` frame) so a rebuild can
+    // carry its real shape onto the moved endpoints instead of straightening it.
+    var parsed = mParsePath(el.getAttribute("d"));
+    var origPts = parsed ? parsed.pts.map(function (p) { return { x: p.x + eo.x, y: p.y + eo.y }; }) : null;
+    var origLabelTr = lg ? mTranslate(lg) : { x: 0, y: 0 };
     var edge = {
       el: el, id: strip(el.id), src: src, tgt: tgt, label: lg, selfLoop: !!(src && src === tgt),
       origD: el.getAttribute("d") || "", origLabelT: lg ? (lg.getAttribute("transform") || "") : "",
-      origLabelTr: lg ? mTranslate(lg) : { x: 0, y: 0 },
+      origLabelTr: origLabelTr,
+      origSeq: parsed ? parsed.seq : null, origPts: origPts,
+      origStart: origPts ? origPts[0] : null, origEnd: origPts ? origPts[origPts.length - 1] : null,
+      origLabelAnchor: lg ? { x: origLabelTr.x + lo.x, y: origLabelTr.y + lo.y } : null,
       eo: eo, lo: lo, bend: null,
     };
     edges.push(edge);
@@ -354,6 +432,17 @@ if (box && box.classList && box.classList.contains("mermaid")) {
     if (ti >= 0) nodeEdges[ti].push(edge);
   });
 
+  // Each edge endpoint is pinned to its node's original attach point and moved by how
+  // far that node has been dragged (its delta), so parallel edges keep their fanned-out
+  // starts and arrowheads instead of every one snapping to the single toward-centre
+  // border point. Falls back to that border point only when the path was unparseable.
+  function edgeEnds(e) {
+    var dS = e.src.delta(), dT = e.tgt.delta();
+    return {
+      s: e.origStart ? { x: e.origStart.x + dS.x, y: e.origStart.y + dS.y } : e.src.border(e.tgt.center()),
+      t: e.origEnd ? { x: e.origEnd.x + dT.x, y: e.origEnd.y + dT.y } : e.tgt.border(e.src.center()),
+    };
+  }
   function rebuildEdge(e) {
     if (!e.src || !e.tgt) return;
     if (e.selfLoop) {
@@ -365,12 +454,13 @@ if (box && box.classList && box.classList.contains("mermaid")) {
       if (e.label) mSetTranslate(e.label, e.origLabelTr.x + d.x, e.origLabelTr.y + d.y);
       return;
     }
-    var cS = e.src.center(), cT = e.tgt.center();
-    var aS = e.src.border(cT), aT = e.tgt.border(cS);
-    // Anchors are computed in the common `space` frame; write the path in its own
-    // frame (subtract eo) and the label in its frame (subtract lo).
+    var ends = edgeEnds(e), aS = ends.s, aT = ends.t;
+    // Endpoints are in the common `space` frame; write the path in its own frame
+    // (subtract eo) and the label in its frame (subtract lo).
     var eo = e.eo, lo = e.lo, lp;
     if (e.bend) {
+      // Bow the edge toward the drag point, but keep its pinned endpoints so the
+      // arrowhead stays on its own fanned spot rather than snapping to the centre.
       var mx = (aS.x + aT.x) / 2, my = (aS.y + aT.y) / 2;
       var vx = aT.x - aS.x, vy = aT.y - aS.y, len = Math.hypot(vx, vy) || 1;
       var ux = vx / len, uy = vy / len;
@@ -378,12 +468,42 @@ if (box && box.classList && box.classList.contains("mermaid")) {
       e.el.setAttribute("d", "M" + (aS.x - eo.x) + "," + (aS.y - eo.y) + "Q" + (cx - eo.x) + "," + (cy - eo.y) + " " + (aT.x - eo.x) + "," + (aT.y - eo.y));
       lp = { x: 0.25 * aS.x + 0.5 * cx + 0.25 * aT.x, y: 0.25 * aS.y + 0.5 * cy + 0.25 * aT.y };
     } else {
-      e.el.setAttribute("d", "M" + (aS.x - eo.x) + "," + (aS.y - eo.y) + "L" + (aT.x - eo.x) + "," + (aT.y - eo.y));
-      lp = { x: (aS.x + aT.x) / 2, y: (aS.y + aT.y) / 2 };
+      // No manual bend: rubber-band the recorded path between the pinned endpoints,
+      // preserving its curve (and parallel-edge separation).
+      var fit = (e.origSeq && e.origStart && e.origEnd) ? mFitTransform(e.origStart, e.origEnd, aS, aT) : null;
+      if (fit) {
+        e.el.setAttribute("d", mPathFromSeq(e.origSeq, e.origPts.map(fit), eo.x, eo.y));
+        lp = e.origLabelAnchor ? fit(e.origLabelAnchor) : { x: (aS.x + aT.x) / 2, y: (aS.y + aT.y) / 2 };
+      } else {
+        e.el.setAttribute("d", "M" + (aS.x - eo.x) + "," + (aS.y - eo.y) + "L" + (aT.x - eo.x) + "," + (aT.y - eo.y));
+        lp = { x: (aS.x + aT.x) / 2, y: (aS.y + aT.y) / 2 };
+      }
     }
     if (e.label) mSetTranslate(e.label, lp.x - lo.x, lp.y - lo.y);
   }
   function rebuildNode(node) { var i = nodes.indexOf(node); if (i >= 0) nodeEdges[i].forEach(rebuildEdge); }
+
+  // On a fresh render, pull every edge label onto the point of its own edge nearest to
+  // where Mermaid dropped it. Mermaid sometimes places a label a little off a curved
+  // edge (e.g. two edges into the same node), and htmlit otherwise only snaps a label
+  // onto its line when that edge is dragged - so a label could sit off its arrow until
+  // touched. This lands them on their lines from the start and updates the label's
+  // recorded origin so later drags stay consistent.
+  function snapLabelsToEdges() {
+    edges.forEach(function (e) {
+      if (!e.label || !e.origLabelAnchor || e.selfLoop) return;
+      var pts = pathSamples(e.el);
+      if (!pts.length) return;
+      var c = e.origLabelAnchor, best = null, bd = Infinity;
+      for (var k = 0; k < pts.length; k++) { var dx = pts[k].x - c.x, dy = pts[k].y - c.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = pts[k]; } }
+      if (!best) return;
+      var tx = best.x - e.lo.x, ty = best.y - e.lo.y;
+      e.origLabelAnchor = { x: best.x, y: best.y };
+      e.origLabelTr = { x: tx, y: ty };
+      e.origLabelT = "translate(" + tx + "," + ty + ")";
+      mSetTranslate(e.label, tx, ty);
+    });
+  }
 
   function save() {
     var snap = { vb: [state.x, state.y, state.w, state.h], nodes: {}, edges: {}, edgeT: {}, labels: {}, bends: {} };
@@ -477,9 +597,11 @@ if (box && box.classList && box.classList.contains("mermaid")) {
       mSetTranslate(drag.node.el, drag.t0.x + (u.x - drag.start.x), drag.t0.y + (u.y - drag.start.y));
       rebuildNode(drag.node);
     } else if (drag.type === "edge" && drag.edge.src && drag.edge.tgt && drag.edge.src !== drag.edge.tgt) {
-      var e2 = drag.edge, cS = e2.src.center(), cT = e2.tgt.center();
-      var mx = (cS.x + cT.x) / 2, my = (cS.y + cT.y) / 2;
-      var vx = cT.x - cS.x, vy = cT.y - cS.y, len = Math.hypot(vx, vy) || 1;
+      // Bend relative to the same pinned endpoints rebuildEdge draws between, so the
+      // grabbed label/edge tracks the cursor and its arrowhead never jumps to centre.
+      var e2 = drag.edge, ends2 = edgeEnds(e2), s2 = ends2.s, t2 = ends2.t;
+      var mx = (s2.x + t2.x) / 2, my = (s2.y + t2.y) / 2;
+      var vx = t2.x - s2.x, vy = t2.y - s2.y, len = Math.hypot(vx, vy) || 1;
       var ux = vx / len, uy = vy / len;
       e2.bend = { along: (u.x - mx) * ux + (u.y - my) * uy, perp: (u.x - mx) * -uy + (u.y - my) * ux };
       rebuildEdge(e2);
@@ -613,4 +735,5 @@ if (box && box.classList && box.classList.contains("mermaid")) {
   diagramRegistry.push({ svg: svg, fit: fitForExport });
 
   if (diagramLayouts[sourceKey]) applySnap(diagramLayouts[sourceKey]);
+  else snapLabelsToEdges();
 }

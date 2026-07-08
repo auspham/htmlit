@@ -244,6 +244,13 @@ and an invalid diagram shows its source instead of an error graphic), and `htmli
 poll` reports a `no-artifact-css` or `mermaid-syntax` warning when it happens - fix
 the source when you see one rather than shipping the fallback.
 
+htmlit also re-reads the raw artifact and reports an `unbalanced-html` warning when
+the markup has a stray or unclosed block tag (a `<div>`/`<section>`/... imbalance).
+The browser silently repairs such markup, so the collapse it causes - an early
+container close that drops the following sections out of your layout wrapper, making
+them render full-width - is invisible in the page but obvious in the source. The
+warning's `offenders` name each stray/unclosed tag with its line; balance them.
+
 Prefer **interactive** artifacts so the user can discover content - selectable
 option cards that expand a section, a dropdown that switches views, `<details>`
 accordions, tabs. Keep interactions **morph-safe** so they survive the live
@@ -361,6 +368,9 @@ small floating menu offers two actions:
   such marker, just the browser's own selection. Once **you answer** that comment
   (tagging your `data-htmlit-answer` block with its `commentId`), the anchor turns
   into a solid underline and **clicking it scrolls to and flashes your answer**.
+  The jump is two-way: clicking the answer block's **"You asked:" header** scrolls
+  back to (and flashes) the anchored spot, so the reader can hop between the question
+  and its answer in either direction.
   Before it is answered, clicking the anchor offers **Ask agent / Remove**. Anchors
   are saved with the review but are a live-review marker only - stripped from your
   snapshot and from the HTML/PDF exports.
