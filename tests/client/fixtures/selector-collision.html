@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Selector collision</title>
+  </head>
+  <body>
+    <div class="layout">
+      <h1>Cancellation design</h1>
+
+      <!--
+        Decoy subtree. Its <strong> sits inside a first-of-type <div> whose direct
+        <ul>'s second <li> holds it - the same tag/nth-of-type skeleton the target
+        below produces. It appears earlier in document order, so an unrooted
+        selector for the target ("div:nth-of-type(1) > ul > li:nth-of-type(2) >
+        strong") resolves here instead, breaking annotation of the target.
+      -->
+      <div class="grid">
+        <div class="card">
+          <ul>
+            <li>Checkpoint cadence</li>
+            <li>Checkpoint <strong>polls the queue</strong> on a timer</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>Failure modes</h2>
+      <ul>
+        <li>A stale reservation that never clears.</li>
+        <li>A <strong>leaked testbed lock</strong> whose task is terminal.</li>
+      </ul>
+    </div>
+  </body>
+</html>
