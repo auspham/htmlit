@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>htmlit dense edge-label fixture</title>
+  <style>
+    body { font: 15px/1.6 system-ui, sans-serif; margin: 2rem; color: #1f2328; background: #fff; }
+    html.dark body { color: #e6edf3; background: #0d1117; }
+  </style>
+</head>
+<body>
+  <h1>A subgraph hub whose many labelled edges must each keep their own label</h1>
+
+  <p>A node inside a subgraph fans labelled edges out to targets in several
+  directions - the shape that used to mis-bind a label to the wrong edge, because
+  the label-to-edge match compared positions in mismatched coordinate frames and
+  assigned greedily. Each label must stay bound to its own edge, so dragging one
+  target moves only that edge's label.</p>
+
+  <pre><code class="language-mermaid">flowchart LR
+  U["caller"] -->|"submit"| API["scheduler"]
+  API -->|"init"| COS[("Cosmos")]
+  API -->|"enqueue"| ST["stream"]
+
+  subgraph REDIS["redis cluster"]
+    ST
+    CMD["command keys"]
+  end
+
+  subgraph FLEET["worker fleet"]
+    W["worker"]
+  end
+
+  ST -->|"consume"| W
+  W -->|"metadata"| COS
+  W -->|"detail, patches, logs"| BLOB[("Blob storage")]
+  W -->|"lock / release"| MGMT["Management API"]
+  W -->|"commands"| CMD
+  W -->|"PBI discussion / status / close"| ADO["ADO MCP"]
+
+  RB["readback"] -->|"meta"| COS
+  RB -->|"detail"| BLOB</code></pre>
+</body>
+</html>

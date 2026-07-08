@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>htmlit parallel-edge curve fixture</title>
+  <style>
+    body { font: 15px/1.6 system-ui, sans-serif; margin: 2rem; color: #1f2328; background: #fff; }
+    html.dark body { color: #e6edf3; background: #0d1117; }
+    h1 { font-size: 22px; }
+  </style>
+</head>
+<body>
+  <h1>Parallel edges keep their curve when a node is dragged</h1>
+
+  <p>Two nodes joined by several edges. Mermaid bows the parallel edges apart so
+  they do not overlap; dragging a node must preserve that separation and curvature
+  instead of collapsing them onto one straight line.</p>
+
+  <pre><code class="language-mermaid">flowchart LR
+  A["source"] -->|"e0"| B["target"]
+  A -->|"e1"| B
+  A -->|"e2"| B
+  A -->|"e3"| B</code></pre>
+</body>
+</html>
