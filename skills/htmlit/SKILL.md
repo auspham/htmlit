@@ -368,6 +368,9 @@ small floating menu offers two actions:
   such marker, just the browser's own selection. Once **you answer** that comment
   (tagging your `data-htmlit-answer` block with its `commentId`), the anchor turns
   into a solid underline and **clicking it scrolls to and flashes your answer**.
+  The jump is two-way: clicking the answer block's **"You asked:" header** scrolls
+  back to (and flashes) the anchored spot, so the reader can hop between the question
+  and its answer in either direction.
   Before it is answered, clicking the anchor offers **Ask agent / Remove**. Anchors
   are saved with the review but are a live-review marker only - stripped from your
   snapshot and from the HTML/PDF exports.

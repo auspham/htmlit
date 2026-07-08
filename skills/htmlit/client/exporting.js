@@ -26,6 +26,10 @@ var ARTIFACT_CSS =
   '[data-htmlit-answer]{position:relative;margin:6px 0 16px;padding:12px 15px;border:1px solid rgba(120,120,135,.28);border-left:3px solid #6b5cff;border-radius:0 10px 10px 10px;background:rgba(107,92,255,.055);}' +
   '[data-htmlit-answer]::before{content:"\\21B3  You asked: " attr(data-question);display:block;margin:0 0 10px;padding:0 0 8px;font:600 12.5px/1.45 system-ui,-apple-system,sans-serif;color:#5647d6;border-bottom:1px dashed rgba(120,120,135,.32);white-space:pre-wrap;}' +
   '[data-htmlit-answer]:not([data-question])::before,[data-htmlit-answer][data-question=""]::before{content:"\\21B3  Answer";}' +
+  // The "You asked:" header of an answered comment is a back-link to where the user
+  // asked (a plain click on it jumps there), so give it a pointer + hover underline.
+  '[data-htmlit-answer][data-htmlit-answer-for]::before{cursor:pointer;}' +
+  '[data-htmlit-answer][data-htmlit-answer-for]:hover::before{text-decoration:underline;}' +
   'html.dark [data-htmlit-answer]{background:rgba(124,111,255,.1);border-color:rgba(140,140,160,.28);border-left-color:#8b7cff;}' +
   'html.dark [data-htmlit-answer]::before{color:#b7adff;border-bottom-color:rgba(150,150,170,.35);}' +
   '@keyframes htmlit-new-pulse{0%{box-shadow:0 0 0 3px rgba(107,92,255,.5);background-color:rgba(107,92,255,.14);}70%{box-shadow:0 0 0 3px rgba(107,92,255,.18);}100%{box-shadow:0 0 0 3px rgba(107,92,255,0);background-color:transparent;}}' +
