@@ -70,6 +70,11 @@ var ARTIFACT_CSS =
   'html.dark .htmlit-copy:hover{background:rgba(255,255,255,.11);color:#e6edf3;}' +
   '.htmlit-copy.htmlit-copied{color:#1a7f37;border-color:rgba(26,127,55,.5);}' +
   'html.dark .htmlit-copy.htmlit-copied{color:#3fb950;border-color:rgba(63,185,80,.5);}' +
+  '.htmlit-code-actions{display:inline-flex;align-items:center;gap:6px;}' +
+  // The Mermaid source view overlays the (scrollable) diagram, so keep its titled
+  // header pinned and opaque - reusing the code bg - instead of scrolling away.
+  '.htmlit-code[data-htmlit-code]>.htmlit-code-hd{position:sticky;top:0;z-index:2;background:#fff;}' +
+  'html.dark .htmlit-code[data-htmlit-code]>.htmlit-code-hd{background:#0d1117;}' +
   '.htmlit-code-body{display:flex;overflow-x:auto;background:#fff;}' +
   'html.dark .htmlit-code-body{background:#0d1117;}' +
   '.htmlit-linenos{position:sticky;left:0;z-index:1;flex:0 0 auto;box-sizing:border-box;text-align:right;padding:12px 12px;white-space:pre;user-select:none;color:#c2c8d0;background:inherit;border-right:1px solid rgba(128,128,140,.2);}' +

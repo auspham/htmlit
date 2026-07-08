@@ -89,16 +89,17 @@ test("a rendered diagram exposes a Code toggle for its source", async (t) => {
       const shown = {
         codeShown: Boolean(view) && getComputedStyle(view).display !== "none",
         svgHidden: getComputedStyle(box.querySelector("svg")).display === "none",
-        labelAfter: btn && btn.textContent,
+        codeBtnHiddenWhenOpen: btn.offsetParent === null,
         showsSource: Boolean(view) && /flowchart/.test(view.textContent),
       };
-      if (btn) btn.click();
+      const back = view && [...view.querySelectorAll(".htmlit-copy")].find((b) => b.textContent === "Diagram");
+      if (back) back.click();
       const bar = box.querySelector("[data-htmlit-tools]");
       const restored = {
         barDisplay: bar ? getComputedStyle(bar).display : "none",
         svgVisibleAgain: getComputedStyle(box.querySelector("svg")).display !== "none",
         codeHiddenAgain: Boolean(view) && getComputedStyle(view).display === "none",
-        labelBack: btn && btn.textContent,
+        codeBtnVisibleAgain: btn.offsetParent !== null,
       };
       return { ...before, ...shown, ...restored };
     });
@@ -106,12 +107,12 @@ test("a rendered diagram exposes a Code toggle for its source", async (t) => {
     assert.equal(result.label, "Code");
     assert.equal(result.codeShown, true);
     assert.equal(result.svgHidden, true);
-    assert.equal(result.labelAfter, "Diagram");
+    assert.equal(result.codeBtnHiddenWhenOpen, true);
     assert.equal(result.showsSource, true);
     assert.match(result.barDisplay, /flex/);
     assert.equal(result.svgVisibleAgain, true);
     assert.equal(result.codeHiddenAgain, true);
-    assert.equal(result.labelBack, "Code");
+    assert.equal(result.codeBtnVisibleAgain, true);
   } finally {
     if (ctx) { await ctx.page.close(); await ctx.review.stop(); }
   }

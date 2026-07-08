@@ -673,14 +673,44 @@ if (box && box.classList && box.classList.contains("mermaid")) {
   if (box && box.classList && box.classList.contains("mermaid") && box.dataset.htmlitSrc && !box.querySelector("[data-htmlit-codebtn]")) {
     var cdark = theme === "dark";
     var mSrc = box.dataset.htmlitSrc;
+
+    // The source view mirrors a normal enhanced code block: a titled header
+    // ("MERMAID" + Copy) over a line-numbered, syntax-highlighted body, reusing the
+    // same classes so it shares the chrome and background. It overlays the diagram
+    // and is opened by the floating "Code" button; the header's "Diagram" button
+    // (and Escape) closes it again.
     var codeView = document.createElement("div");
+    codeView.className = "htmlit-code";
     codeView.setAttribute("data-htmlit", "");
     codeView.setAttribute("data-htmlit-code", "");
-    codeView.style.cssText = "position:absolute;inset:0;margin:0;display:none;z-index:6;overflow:auto;box-sizing:border-box;" +
-      "background:" + (cdark ? "#0d1117" : "#f6f8fa") + ";";
+    codeView.style.cssText = "position:absolute;inset:0;margin:0;display:none;z-index:6;overflow:auto;box-sizing:border-box;border-radius:inherit;";
+
+    var codeHd = document.createElement("div");
+    codeHd.className = "htmlit-code-hd";
+    var codeLang = document.createElement("span");
+    codeLang.className = "htmlit-code-lang";
+    codeLang.textContent = "mermaid";
+    var codeActions = document.createElement("span");
+    codeActions.className = "htmlit-code-actions";
+    var copyBtn = makeCopyButton(function () { return mSrc; });
+    copyBtn.setAttribute("data-htmlit", "");
+    copyBtn.setAttribute("data-htmlit-codecopy", "");
+    copyBtn.addEventListener("pointerdown", function (ev) { ev.stopPropagation(); });
+    var backBtn = document.createElement("button");
+    backBtn.type = "button";
+    backBtn.className = "htmlit-copy";
+    backBtn.setAttribute("data-htmlit", "");
+    backBtn.textContent = "Diagram";
+    backBtn.title = "Show the diagram";
+    backBtn.addEventListener("pointerdown", function (ev) { ev.stopPropagation(); });
+    codeActions.appendChild(copyBtn);
+    codeActions.appendChild(backBtn);
+    codeHd.appendChild(codeLang);
+    codeHd.appendChild(codeActions);
+    codeView.appendChild(codeHd);
+
     var codeBody = document.createElement("div");
     codeBody.className = "htmlit-code-body";
-    codeBody.style.cssText = "background:transparent;min-height:100%;";
     codeBody.appendChild(makeLinenos(lineCount(mSrc)));
     var codePre = document.createElement("pre");
     var codeEl = document.createElement("code");
@@ -691,13 +721,6 @@ if (box && box.classList && box.classList.contains("mermaid")) {
     codeView.appendChild(codeBody);
     codeView.addEventListener("pointerdown", function (ev) { ev.stopPropagation(); });
     box.appendChild(codeView);
-
-    var copyBtn = makeCopyButton(function () { return mSrc; });
-    copyBtn.setAttribute("data-htmlit", "");
-    copyBtn.setAttribute("data-htmlit-codecopy", "");
-    copyBtn.style.cssText = "position:absolute;right:96px;top:10px;z-index:7;display:none;";
-    copyBtn.addEventListener("pointerdown", function (ev) { ev.stopPropagation(); });
-    box.appendChild(copyBtn);
 
     var codeBtn = document.createElement("button");
     codeBtn.type = "button";
@@ -710,18 +733,17 @@ if (box && box.classList && box.classList.contains("mermaid")) {
       "background:" + (cdark ? "rgba(36,38,45,.92)" : "rgba(255,255,255,.94)") + ";color:" + (cdark ? "#e8e8ea" : "#222") +
       ";border:1px solid " + (cdark ? "rgba(255,255,255,.14)" : "rgba(0,0,0,.12)") + ";box-shadow:0 2px 8px rgba(0,0,0,.16);";
     codeBtn.addEventListener("pointerdown", function (ev) { ev.stopPropagation(); });
-    codeBtn.addEventListener("click", function (ev) {
-      ev.stopPropagation(); ev.preventDefault();
-      var opening = codeView.style.display === "none";
+
+    function showCode(opening) {
       codeView.style.display = opening ? "block" : "none";
-      copyBtn.style.display = opening ? "block" : "none";
+      codeBtn.style.display = opening ? "none" : "";
       var svgEl = box.querySelector("svg");
       if (svgEl) svgEl.style.display = opening ? "none" : "";
       var zbar = box.querySelector("[data-htmlit-tools]");
       if (zbar) zbar.style.display = opening ? "none" : "inline-flex";
-      codeBtn.textContent = opening ? "Diagram" : "Code";
-      codeBtn.title = opening ? "Show the diagram" : "Show the Mermaid source";
-    });
+    }
+    codeBtn.addEventListener("click", function (ev) { ev.stopPropagation(); ev.preventDefault(); showCode(true); });
+    backBtn.addEventListener("click", function (ev) { ev.stopPropagation(); ev.preventDefault(); showCode(false); });
     box.appendChild(codeBtn);
   }
 
