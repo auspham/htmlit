@@ -24,12 +24,14 @@
       <div class="detail" data-for="b">
         <p id="b-para">Take a maintenance window: freeze writes, dump, restore, repoint, unfreeze.</p>
         <section data-htmlit-answer data-question="Elaborate?" data-htmlit-answer-for="cm-b">
-          <p>Concretely, the window looks like this:</p>
-          <ol>
-            <li>Freeze writes and drain in-flight transactions.</li>
-            <li>Dump the old primary and restore into the new cluster.</li>
-            <li>Repoint the app, validate, then lift maintenance.</li>
-          </ol>
+          <div class="card">
+            <p>Concretely, the window looks like this:</p>
+            <ol>
+              <li>Freeze writes and drain in-flight transactions.</li>
+              <li>Dump the old primary and restore into the new cluster.</li>
+              <li>Repoint the app, validate, then lift maintenance.</li>
+            </ol>
+          </div>
         </section>
       </div>
       <div class="detail" data-for="c"><p>Option C detail.</p></div>

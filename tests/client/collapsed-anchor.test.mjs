@@ -2,7 +2,8 @@
  * Browser regression test for comment cards whose anchor sits inside a collapsed
  * section (a CSS radio "option"): the card must stay in the rail instead of
  * vanishing, "View in document" must reveal the option and scroll to it, and the
- * agent's answer must render its markup (a numbered list keeps its numbers).
+ * agent's answer must render its markup without promoting an artifact .card into
+ * a separate fixed rail card.
  *
  * Skips rather than fails when no browser or Python is available.
  */
@@ -34,11 +35,14 @@ function readState() {
   const sr = document.getElementById("htmlit-chrome").shadowRoot;
   const card = sr.querySelector('.rail .card[data-id="cm-b"]');
   const body = card && card.querySelector(".card-answer-body");
+  const answerCard = body && body.querySelector(".card");
   const answer = document.querySelector('[data-htmlit-answer-for="cm-b"]');
   return {
     cardExists: Boolean(card),
     cardVisible: Boolean(card) && getComputedStyle(card).display !== "none",
+    cardPosition: card ? getComputedStyle(card).position : null,
     answerRich: Boolean(body) && body.classList.contains("rich"),
+    answerCardPosition: answerCard ? getComputedStyle(answerCard).position : null,
     listItems: body ? body.querySelectorAll("ol li").length : 0,
     answerShown: Boolean(answer) && answer.getClientRects().length > 0,
     bChecked: document.getElementById("s-b").checked,
@@ -80,9 +84,11 @@ test("a comment in a collapsed option stays carded, reveals on jump, and renders
     const before = await page.evaluate(readState);
     assert.equal(before.cardExists, true);
     assert.equal(before.cardVisible, true, "card should stay visible while Option B is collapsed");
+    assert.equal(before.cardPosition, "fixed", "the rail comment card should stay fixed");
     assert.equal(before.bChecked, false);
     assert.equal(before.answerShown, false, "the answer/anchor is collapsed to start");
     assert.equal(before.answerRich, true);
+    assert.equal(before.answerCardPosition, "static", "artifact .card content should remain inside the agent answer");
     assert.equal(before.listItems, 3, "the answer's numbered list should render, not flatten to text");
 
     await page.evaluate(() => document.getElementById("htmlit-chrome").shadowRoot.querySelector('.rail .card[data-id="cm-b"] .card-answer-jump').click());
