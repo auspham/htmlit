@@ -3,6 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <title>Selector collision</title>
+    <style>
+      .grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+      .grid > * { min-width: 0; }
+    </style>
   </head>
   <body>
     <div class="layout">

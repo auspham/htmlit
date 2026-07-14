@@ -95,3 +95,58 @@ test("selecting a nested inline element opens the annotation menu despite a deco
     if (review) await review.stop();
   }
 });
+
+test("comment anchors do not turn structural whitespace into grid children", async (t) => {
+  if (state.unavailable) return t.skip(state.unavailable);
+  let review, page;
+  try {
+    review = await startReview(FIXTURE);
+    page = await state.browser.newPage();
+    await page.setViewport({ width: 1440, height: 1000 });
+    await page.goto(review.url, { waitUntil: "domcontentloaded" });
+
+    const range = await page.evaluate(() => {
+      const grid = document.querySelector(".grid");
+      const card = grid.querySelector(".card");
+      const selected = card.textContent;
+      const start = grid.textContent.indexOf(selected);
+      return {
+        container: ".grid",
+        start,
+        end: start + selected.length,
+        text: selected.replace(/\s+/g, " ").trim(),
+      };
+    });
+    assert.notEqual(range.start, -1);
+
+    await fetch(`${review.base}/api/${review.key}/highlights`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ highlights: [{
+        id: "cm-grid", kind: "comment", prompt: "Explain this card", comments: ["Explain this card"],
+        text: "", range,
+      }] }),
+    });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => document.querySelector('mark.htmlit-cm[data-htmlit-cm="cm-grid"]'), { timeout: 20000 });
+
+    const result = await page.evaluate(() => {
+      const grid = document.querySelector(".grid");
+      const marks = [...document.querySelectorAll('mark.htmlit-cm[data-htmlit-cm="cm-grid"]')];
+      return {
+        markCount: marks.length,
+        whitespaceMarks: marks.filter((mark) => !mark.textContent.trim()).length,
+        directGridMarks: grid.querySelectorAll(':scope > mark.htmlit-cm[data-htmlit-cm="cm-grid"]').length,
+        gridChildren: grid.children.length,
+      };
+    });
+
+    assert.ok(result.markCount > 0, "the selected text should still have comment anchors");
+    assert.equal(result.whitespaceMarks, 0, "structural whitespace should not be wrapped in marks");
+    assert.equal(result.directGridMarks, 0, "the grid should not gain a synthetic mark child");
+    assert.equal(result.gridChildren, 1, "the grid should keep only its artifact card");
+  } finally {
+    if (page) await page.close();
+    if (review) await review.stop();
+  }
+});
