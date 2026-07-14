@@ -213,7 +213,9 @@ export function wrapRange(range, id, cls, attr, title) {
   if (!root) return;
   var segs = [];
   if (range.startContainer === range.endContainer && range.startContainer.nodeType === 3) {
-    segs.push({ node: range.startContainer, from: range.startOffset, to: range.endOffset });
+    if (/\S/.test(range.startContainer.nodeValue.slice(range.startOffset, range.endOffset))) {
+      segs.push({ node: range.startContainer, from: range.startOffset, to: range.endOffset });
+    }
   } else {
     var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
     var n;
@@ -224,7 +226,7 @@ export function wrapRange(range, id, cls, attr, title) {
       if (!intersects) continue;
       var from = (n === range.startContainer) ? range.startOffset : 0;
       var to = (n === range.endContainer) ? range.endOffset : n.nodeValue.length;
-      if (to > from) segs.push({ node: n, from: from, to: to });
+      if (to > from && /\S/.test(n.nodeValue.slice(from, to))) segs.push({ node: n, from: from, to: to });
     }
   }
   // wrap last-to-first so earlier segments' offsets stay valid as nodes split
