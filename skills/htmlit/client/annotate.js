@@ -10,6 +10,8 @@ var pending = null;
 var selMenuOpen = false;
 var hlSeq = 0;
 
+export const DIAGRAM_TARGET_ATTR = "data-htmlit-diagram-key";
+
 export function getPending() { return pending; }
 export function hasPendingOrMenu() { return !!(pending || selMenuOpen); }
 
@@ -18,7 +20,7 @@ export function annotateEl(el) {
   buildElPending(el);
   openSelMenu();
 }
-// A click (not a drag) on a diagram node/edge. If it already carries a comment
+// A click (not a drag) on a diagram element. If it already carries a comment
 // anchor: jump to the answer when there is one, else open the anchor's menu
 // (comment again / remove). Otherwise start a fresh comment on it.
 export function diagramClick(el) {
@@ -113,15 +115,19 @@ export function inMermaid(node) {
   var el = node && (node.nodeType === 1 ? node : node.parentElement);
   return !!(el && el.closest && el.closest(".mermaid"));
 }
-// A stable key for a clicked diagram node/edge: the diagram's source text plus the
-// element's id with the (per-render) svg-id prefix stripped, so it re-resolves even
-// after Mermaid re-renders the SVG (theme switch, morph) with a fresh svg id.
+// A stable key for a clicked diagram element: prefer an explicit target key for
+// Mermaid shapes without ids, otherwise strip the per-render SVG prefix from its id.
 export function diagramKeyOf(el) {
   var frame = el && el.closest && el.closest(".mermaid");
   if (!frame || !frame.dataset || !frame.dataset.htmlitSrc) return null;
   var svg = frame.querySelector("svg");
+  var keyed = el && el.closest ? el.closest("[" + DIAGRAM_TARGET_ATTR + "]") : null;
+  if (svg && keyed && keyed.closest("svg") === svg) {
+    var targetKey = keyed.getAttribute(DIAGRAM_TARGET_ATTR);
+    if (targetKey) return { src: frame.dataset.htmlitSrc, nodeKey: targetKey };
+  }
   var idEl = el.id ? el : (el.closest ? el.closest("[id]") : null);
-  if (!svg || !idEl || (idEl.closest && !idEl.closest(".mermaid"))) return null;
+  if (!svg || !idEl || idEl === svg || (idEl.closest && !idEl.closest(".mermaid"))) return null;
   var prefix = svg.id ? svg.id + "-" : "";
   var id = idEl.id || "";
   var key = prefix && id.indexOf(prefix) === 0 ? id.slice(prefix.length) : id;
@@ -136,6 +142,10 @@ export function resolveDiagramTarget(t) {
     if (!f.dataset || f.dataset.htmlitSrc !== t.src) continue;
     var svg = f.querySelector("svg");
     if (!svg) return null;
+    var keyed = svg.querySelectorAll("[" + DIAGRAM_TARGET_ATTR + "]");
+    for (var k = 0; k < keyed.length; k++) {
+      if (keyed[k].getAttribute(DIAGRAM_TARGET_ATTR) === t.nodeKey) return keyed[k];
+    }
     var prefix = svg.id ? svg.id + "-" : "";
     var els = svg.querySelectorAll("[id]");
     for (var j = 0; j < els.length; j++) {
@@ -305,7 +315,7 @@ export function addCommentAnchor(range, prompt, id) {
   appState.highlights.push({ id: id || newAnchorId(), kind: HighlightKind.COMMENT, prompt: prompt || "", comments: [prompt || ""],
     range: { container: range.container, start: range.start, end: range.end, text: range.text } });
 }
-// A comment anchor on a diagram node/edge: no text range, just a stable target.
+// A comment anchor on a diagram element: no text range, just a stable target.
 export function addCommentAnchorEl(target, text, prompt, id) {
   if (!target || !target.src) return;
   var existing = findAnchorByTarget(target);
@@ -403,7 +413,7 @@ export function commentItemFromPending(prompt) {
     var ex = findAnchorBySpan(rng);
     return { selector: pending.range.container, tag: "text", text: pending.text, prompt: prompt, note: false, range: rng, target: null, commentId: (ex && ex.id) || newAnchorId() };
   }
-  // diagram node/edge (a fresh click, or re-commenting an existing diagram anchor)
+  // diagram element (a fresh click, or re-commenting an existing diagram anchor)
   var diag = pending.diagram || pending.target || null;
   if (diag && diag.src) {
     var exd = findAnchorByTarget(diag);

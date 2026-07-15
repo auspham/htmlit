@@ -177,21 +177,12 @@ links the whole thread).
 **Only comments and freeform messages arrive in `prompts` - highlights do not.**
 
 - `prompts[].prompt` is what the user typed.
-- `prompts[].tag` is `"text"` (a commented text selection), an element tag like
-  `"h1"`/`"img"`/`"g"` (a non-text target such as an image or a Mermaid node,
-  where text can't be selected), or `"message"` (freeform chat).
+- `prompts[].tag` is `"text"` (a commented text selection), an element tag like `"h1"`/`"img"`/`"g"` (a non-text target such as an image or a Mermaid element, where text can't be selected), or `"message"` (freeform chat).
 - `prompts[].range` (when present) pins the exact commented span: `container` is
   a CSS selector and `start`/`end` are character offsets into that element's text,
   with the commented `text`. It is `null` for element/diagram targets and freeform
   messages, where `selector` (if any) locates the target.
-- `prompts[].commentId` (non-empty for a text-span comment **or a diagram
-  node/edge comment**) is the id of the "you asked here" anchor left on that
-  target - a purple underline on text, or a purple outline box on the diagram
-  element. **When you answer such a comment, set
-  `data-htmlit-answer-for="<commentId>"` on your `data-htmlit-answer` block**
-  (see below) - the anchor then links to your answer, and clicking it in the page
-  scrolls to and flashes that answer. (For a freeform `message` it is empty; just
-  answer normally.)
+- `prompts[].commentId` (non-empty for a text-span comment **or a diagram element comment**) is the id of the "you asked here" anchor left on that target - a purple underline on text, or a purple outline box on the diagram element. **When you answer such a comment, set `data-htmlit-answer-for="<commentId>"` on your `data-htmlit-answer` block** (see below) - the anchor then links to your answer, and clicking it in the page scrolls to and flashes that answer. (For a freeform `message` it is empty; just answer normally.)
 - `prompts[].selector` is a CSS selector for the target (the range's container
   for text, or the element itself). `type` is `feedback`, `ended`, or (with
   `--once`) `timeout`.
@@ -307,13 +298,7 @@ The injected client auto-renders, on first load and after every morph:
   numbers) with a **Copy** button to grab the syntax in place. A diagram
   inside a hidden tab or a closed `<details>` renders **automatically the moment it
   is revealed**, so it is safe to put diagrams in tabs/accordions - they never
-  collapse. Manual
-  arrangement is remembered per diagram
-  source, so it survives a theme switch or a live morph. (A Mermaid node/edge is
-  **clicked** to leave a comment - its text can't be text-selected - while a drag
-  still pans/moves it, so commenting and rearrange coexist without a mode. The SVG
-  shows the normal arrow cursor at rest and switches to a grabbing cursor only
-  while you actually drag.)
+  collapse. Manual arrangement is remembered per diagram source, so it survives a theme switch or a live morph. (A Mermaid flowchart node/edge or sequence participant/message/note is **clicked** to leave a comment - its text can't be text-selected - while a drag still pans/moves it, so commenting and rearrange coexist without a mode. The SVG shows the normal arrow cursor at rest and switches to a grabbing cursor only while you actually drag.)
 - **Code** - `<pre><code class="language-python">...</code></pre>` is highlighted
   by highlight.js and rendered with a **language name** and a **Copy** button on top
   and a pinned **line-number gutter** (the gutter stays put while long lines scroll
@@ -376,14 +361,7 @@ small floating menu offers two actions:
   are saved with the review but are a live-review marker only - stripped from your
   snapshot and from the HTML/PDF exports.
 
-A **Mermaid** node/edge (whose text isn't selectable, since dragging pans the
-diagram) is targeted with a **click**, which offers **Ask agent** only (a text
-note doesn't apply to a diagram shape). Sending leaves a persistent purple
-**outline box** on that node/edge - the diagram equivalent of a text comment
-anchor - that re-resolves across Mermaid re-renders and, once you answer, becomes
-the clickable jump to your answer. The CSS selector is never shown to the user,
-but comments deliver it (and a `commentId`) to you in `prompts[]`; highlights and
-anchors stay local.
+A **Mermaid** flowchart node/edge or sequence participant/message/note (whose text isn't selectable, since dragging pans the diagram) is targeted with a **click**, which offers **Ask agent** only (a text note doesn't apply to a diagram shape). Sending leaves a persistent purple **outline box** on that element - the diagram equivalent of a text comment anchor - that re-resolves across Mermaid re-renders and, once you answer, becomes the clickable jump to your answer. The CSS selector is never shown to the user, but comments deliver it (and a `commentId`) to you in `prompts[]`; highlights and anchors stay local.
 
 ## Visual guidance
 
