@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>htmlit sequence annotation fixture</title>
+</head>
+<body>
+  <h1>Sequence annotation fixture</h1>
+  <pre><code class="language-mermaid">sequenceDiagram
+  participant A as "Caller"
+  participant B as "Worker"
+  A->>B: "Resolve request"
+  Note over A,B: "The first attempt can race"
+  B-->>A: "Return result"</code></pre>
+</body>
+</html>

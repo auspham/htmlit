@@ -5,10 +5,46 @@ import { theme } from "./theme.js";
 import { renderHighlights, scheduleReposition } from "./overlays.js";
 import { positionRail } from "./rail.js";
 import { makeCopyButton, makeLinenos, lineCount, highlightMermaidSource } from "./codeblock.js";
-import { clearPending, diagramClick } from "./annotate.js";
+import { clearPending, DIAGRAM_TARGET_ATTR, diagramClick } from "./annotate.js";
 
 export const diagramLayouts = {}; // diagram source text -> saved arrangement
 export const diagramRegistry = []; // { svg, fit } per live diagram, for export/print
+
+function directChildMatches(el, selector) {
+  for (var i = 0; i < el.children.length; i++) if (el.children[i].matches(selector)) return true;
+  return false;
+}
+
+function setupSequenceTargets(svg) {
+  var actorGroups = Array.prototype.filter.call(svg.querySelectorAll("g"), function (group) {
+    return directChildMatches(group, "rect.actor, text.actor.actor-box");
+  });
+  actorGroups.forEach(function (group, index) {
+    group.setAttribute(DIAGRAM_TARGET_ATTR, "sequence-actor-" + index);
+  });
+
+  var noteGroups = Array.prototype.filter.call(svg.querySelectorAll("g"), function (group) {
+    return directChildMatches(group, "rect.note, text.noteText");
+  });
+  noteGroups.forEach(function (group, index) {
+    group.setAttribute(DIAGRAM_TARGET_ATTR, "sequence-note-" + index);
+  });
+
+  var messages = Array.prototype.slice.call(svg.querySelectorAll("text.messageText"));
+  var messageLines = Array.prototype.slice.call(svg.querySelectorAll(".messageLine0, .messageLine1"));
+  messages.forEach(function (message, index) {
+    message.setAttribute(DIAGRAM_TARGET_ATTR, "sequence-message-" + index);
+  });
+
+  return function (el) {
+    if (!el || !el.closest) return null;
+    var keyed = el.closest("[" + DIAGRAM_TARGET_ATTR + "]");
+    if (keyed && keyed.closest("svg") === svg) return keyed;
+    var line = el.closest(".messageLine0, .messageLine1");
+    var lineIndex = line ? messageLines.indexOf(line) : -1;
+    return lineIndex >= 0 ? (messages[lineIndex] || null) : null;
+  };
+}
 
 /**
  * @typedef {{x: number, y: number}} Point
@@ -190,7 +226,7 @@ export function enhanceMermaid() {
     try { setupDiagram(svg); } catch (e) {}
   });
   // The diagram SVG is now in the DOM, so any "you asked here" boxes on its
-  // nodes/edges can be (re)resolved and drawn.
+  // elements can be (re)resolved and drawn.
   if (typeof renderHighlights === "function") renderHighlights();
   if (typeof positionRail === "function") positionRail();
 }
@@ -200,6 +236,7 @@ export function setupDiagram(svg) {
   var box = svg.parentNode;
   var sourceKey = (box && box.dataset && box.dataset.htmlitSrc) || svg.id || "";
   var space = svg.querySelector("g.root") || svg;
+  var sequenceTarget = setupSequenceTargets(svg);
 // Guarantee the frame is the bar's containing block AND clips it, as inline
 // styles - so the zoom bar can never escape the frame if the injected
 // stylesheet hasn't applied yet during a live morph (a reload used to "fix" it).
@@ -566,6 +603,7 @@ if (box && box.classList && box.classList.contains("mermaid")) {
     var u = toUser(e.clientX, e.clientY);
     var nodeEl = closest("g.node"), labelEl = closest("g.edgeLabels g.edgeLabel"), pathEl = closest("g.edgePaths path");
     var node = nodeEl && nodeByEl(nodeEl);
+    var annotationTarget = sequenceTarget(t);
     // A label is not independently movable - grabbing it bends its edge, so the
     // label always stays attached to the line.
     var edge = (pathEl && edgeByPath(pathEl)) || (labelEl && edgeByLabel(labelEl)) || null;
@@ -574,7 +612,7 @@ if (box && box.classList && box.classList.contains("mermaid")) {
     // prefer it over the edge path (whose bounding box spans both nodes and would
     // "highlight the whole square"). Fall back to the path when there is no label.
     else if (edge && edge.src && edge.tgt && edge.src !== edge.tgt) drag = { type: "edge", edge: edge, hit: labelEl || edge.label || pathEl || edge.el };
-    else drag = { type: "pan", sx: e.clientX, sy: e.clientY };
+    else drag = { type: "pan", hit: annotationTarget, sx: e.clientX, sy: e.clientY };
     drag.moved = false; drag.cx0 = e.clientX; drag.cy0 = e.clientY;
     try { svg.setPointerCapture(e.pointerId); } catch (_) {}
   });
@@ -615,10 +653,11 @@ if (box && box.classList && box.classList.contains("mermaid")) {
     try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
     var d = drag; drag = null; svg.style.cursor = "default";
     if (d.moved) { save(); return; }
-    // A click (no drag) acts on the pressed node/edge - text isn't selectable in a
+    // A click (no drag) acts on the pressed diagram element - text isn't selectable in a
     // diagram. diagramClick() routes it: jump to an answered anchor, open an
     // existing anchor's menu, or start a fresh comment. A background click dismisses.
-    if (d.type === "node" || d.type === "edge") diagramClick(d.hit || (d.node && d.node.el) || (d.edge && d.edge.el));
+    var hit = d.hit || (d.node && d.node.el) || (d.edge && d.edge.el);
+    if (hit) diagramClick(hit);
     else clearPending();
   }
   svg.addEventListener("pointerup", endDrag);
