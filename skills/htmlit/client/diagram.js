@@ -413,22 +413,37 @@ if (box && box.classList && box.classList.contains("mermaid")) {
     return (g.textContent || "").trim() && /translate/.test(g.getAttribute("transform") || "");
   });
   var labelPos = labelEls.map(function (g) { var o = frameOffset(g), t = mTranslate(g); return { x: t.x + o.x, y: t.y + o.y }; });
-  // Pair labels to paths by GLOBALLY nearest first, not greedily in DOM order: rank
-  // every (label, path) pair by the label's minimum distance to that path, then lock in
-  // each closest pair whose label and path are both still free. Greedy-by-DOM-order (or
-  // matching on the arc-midpoint) mis-bound a label to the wrong edge, so a node drag
-  // then flung that label across the diagram onto an unrelated arrow.
   var labelForPath = new Map();
+  var labelUsed = [], pathUsed = [];
+  // State diagrams expose the transition id on each label. Prefer that identity
+  // because nearby or crossing paths can be geometrically closer than the label's
+  // own edge.
+  labelEls.forEach(function (label, li) {
+    var keyed = label.querySelector("[data-id]");
+    var key = keyed && keyed.getAttribute("data-id");
+    if (!key) return;
+    for (var pi = 0; pi < pathEls.length; pi++) {
+      if (!pathUsed[pi] && strip(pathEls[pi].id) === key) {
+        labelUsed[li] = pathUsed[pi] = true;
+        labelForPath.set(pathEls[pi], label);
+        break;
+      }
+    }
+  });
+  // Pair labels without usable ids by GLOBALLY nearest first, not greedily in DOM
+  // order: rank every remaining (label, path) pair by the label's minimum distance
+  // to that path, then lock in each closest pair whose label and path are both free.
   var pairs = [];
   labelPos.forEach(function (lp, li) {
+    if (labelUsed[li]) return;
     pathPts.forEach(function (pts, pi) {
+      if (pathUsed[pi]) return;
       var best = Infinity;
       for (var k = 0; k < pts.length; k++) { var dx = pts[k].x - lp.x, dy = pts[k].y - lp.y, d = dx * dx + dy * dy; if (d < best) best = d; }
       if (best < Infinity) pairs.push({ li: li, pi: pi, d: best });
     });
   });
   pairs.sort(function (a, b) { return a.d - b.d; });
-  var labelUsed = [], pathUsed = [];
   pairs.forEach(function (pr) {
     if (labelUsed[pr.li] || pathUsed[pr.pi]) return;
     labelUsed[pr.li] = pathUsed[pr.pi] = true;
