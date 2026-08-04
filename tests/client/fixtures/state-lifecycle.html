@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>htmlit state lifecycle drag fixture</title>
+</head>
+<body>
+  <h1>Task status lifecycle</h1>
+
+  <pre><code class="language-mermaid">stateDiagram-v2
+  [*] --> INIT: API accepted, not yet on Redis
+  INIT --> QUEUED: XADD confirmed
+  INIT --> INIT: enqueue retry with backoff
+  INIT --> FAILED: enqueue budget spent
+  QUEUED --> RUNNING: worker claimed it
+  RUNNING --> FINISHED: agent succeeded
+  RUNNING --> RETRYING: transient failure
+  RETRYING --> RUNNING: redelivered
+  RUNNING --> FAILED: terminal failure
+  RETRYING --> DEAD_LETTERING: delivery budget spent
+  DEAD_LETTERING --> FAILED
+  RUNNING --> CANCELLED: human cancelled
+  QUEUED --> CANCELLED: removed from stream</code></pre>
+</body>
+</html>
